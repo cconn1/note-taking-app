@@ -1,4 +1,4 @@
-import { useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import { useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import {
   hits,
   INK_COLORS,
@@ -31,7 +31,9 @@ const ERASER_RADIUS = 10
 const FINGER_KEY = 'sitrep-finger-draw'
 
 type Action = { add: Stroke } | { erase: Stroke[] }
-type Gesture = { id: number; erase: boolean; points: Point[]; remaining: Stroke[]; erased: Stroke[] }
+// rect/k: the canvas position, measured once per stroke. Measuring per sample forces a page
+// layout each time, and the Pencil sends ~4 samples per frame.
+type Gesture = { id: number; erase: boolean; points: Point[]; remaining: Stroke[]; erased: Stroke[]; rect: DOMRect; k: number }
 
 // The nearest scrolling container: the page normally, the notes panel in full screen.
 function scrollParent(el: Element | null): Element {
@@ -58,7 +60,9 @@ export default function Ink({ strokes, onChange }: { strokes: Stroke[]; onChange
   // Per device: on for a phone, off for an iPad with a Pencil.
   const [finger, setFinger] = useState(readFinger)
   const [extra, setExtra] = useState(0) // "Add space" / auto-grow, not saved
-  const [live, setLive] = useState<Point[] | null>(null)
+  // The stroke being drawn is updated directly on this <path>, not through React, so each
+  // frame redraws one path instead of re-rendering the whole canvas.
+  const livePath = useRef<SVGPathElement>(null)
   const gesture = useRef<Gesture | null>(null)
   // A finger dragging the canvas while finger drawing is off: we scroll by hand (see touchAction).
   const scroll = useRef<{ id: number; y: number; el: Element } | null>(null)
@@ -80,10 +84,14 @@ export default function Ink({ strokes, onChange }: { strokes: Stroke[]; onChange
   }
 
   // Screen position → page units.
-  function toPoint(e: PointerEvent): Point {
-    const r = svg.current!.getBoundingClientRect()
-    const k = INK_WIDTH / r.width
-    return [(e.clientX - r.left) * k, (e.clientY - r.top) * k, e.pointerType === 'pen' && e.pressure ? e.pressure : 0.5]
+  // Screen position → page units.
+  function toPoint(e: PointerEvent, { rect, k }: Gesture): Point {
+    return [(e.clientX - rect.left) * k, (e.clientY - rect.top) * k, e.pointerType === 'pen' && e.pressure ? e.pressure : 0.5]
+  }
+
+  function drawLive() {
+    const g = gesture.current
+    livePath.current?.setAttribute('d', g && !g.erase ? outlinePath(g.points, drawTool, size, false) : '')
   }
 
   function record(action: Action) {
@@ -113,9 +121,12 @@ export default function Ink({ strokes, onChange }: { strokes: Stroke[]; onChange
     scroll.current = null // the Pencil wins over a resting palm
     // A Windows pen's eraser end reports button 32.
     const erase = tool === 'eraser' || (e.buttons & 32) !== 0
-    gesture.current = { id: e.pointerId, erase, points: [toPoint(e.nativeEvent)], remaining: strokes, erased: [] }
-    if (erase) eraseAt(gesture.current.points[0])
-    else setLive(gesture.current.points.slice())
+    const rect = e.currentTarget.getBoundingClientRect()
+    const g: Gesture = { id: e.pointerId, erase, points: [], remaining: strokes, erased: [], rect, k: INK_WIDTH / rect.width }
+    g.points.push(toPoint(e.nativeEvent, g))
+    gesture.current = g
+    if (erase) eraseAt(g.points[0])
+    else drawLive()
   }
 
   function move(e: ReactPointerEvent<SVGSVGElement>) {
@@ -130,7 +141,7 @@ export default function Ink({ strokes, onChange }: { strokes: Stroke[]; onChange
     // Coalesced events carry every Pencil sample between frames, for smoother strokes.
     const samples = e.nativeEvent.getCoalescedEvents?.()
     for (const ev of samples?.length ? samples : [e.nativeEvent]) {
-      const p = toPoint(ev)
+      const p = toPoint(ev, g)
       g.points.push(p)
       if (g.erase) eraseAt(p)
     }
@@ -143,7 +154,7 @@ export default function Ink({ strokes, onChange }: { strokes: Stroke[]; onChange
     if (!frame.current)
       frame.current = requestAnimationFrame(() => {
         frame.current = 0
-        setLive(gesture.current && !gesture.current.erase ? gesture.current.points.slice() : null)
+        drawLive()
       })
   }
 
@@ -152,7 +163,7 @@ export default function Ink({ strokes, onChange }: { strokes: Stroke[]; onChange
     const g = gesture.current
     if (!g || e.pointerId !== g.id) return
     gesture.current = null
-    setLive(null)
+    drawLive() // clears the live path; the finished stroke is drawn with the others
     if (g.erase) {
       if (g.erased.length) record({ erase: g.erased })
       return
@@ -189,8 +200,15 @@ export default function Ink({ strokes, onChange }: { strokes: Stroke[]; onChange
     if (t === 'pen' && color === 'yellow') setColor('ink')
   }
 
+  // Finished strokes only re-render when the strokes change, never while you're mid-stroke.
   // Highlighter strokes sit under the pen.
-  const ordered = [...strokes.filter((s) => s.tool === 'highlighter'), ...strokes.filter((s) => s.tool === 'pen')]
+  const layer = useMemo(
+    () =>
+      [...strokes.filter((s) => s.tool === 'highlighter'), ...strokes.filter((s) => s.tool === 'pen')].map((s) => (
+        <path key={s.id} d={strokePath(s)} className={`${FILL[s.color]} ${s.tool === 'highlighter' ? 'opacity-35' : ''}`} />
+      )),
+    [strokes],
+  )
   const btn = (on: boolean) =>
     `grid h-10 min-w-10 place-items-center rounded-lg px-2 text-sm font-medium ${on ? 'bg-accent text-white' : 'text-neutral-600 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-900'}`
 
@@ -259,12 +277,8 @@ export default function Ink({ strokes, onChange }: { strokes: Stroke[]; onChange
           </pattern>
         </defs>
         <rect width={INK_WIDTH} height={height} fill="url(#ink-lines)" />
-        {ordered.map((s) => (
-          <path key={s.id} d={strokePath(s)} className={`${FILL[s.color]} ${s.tool === 'highlighter' ? 'opacity-35' : ''}`} />
-        ))}
-        {live && (
-          <path d={outlinePath(live, drawTool, size, false)} className={`${FILL[color]} ${drawTool === 'highlighter' ? 'opacity-35' : ''}`} />
-        )}
+        {layer}
+        <path ref={livePath} className={`${FILL[color]} ${drawTool === 'highlighter' ? 'opacity-35' : ''}`} />
       </svg>
 
       <button onClick={() => setExtra((x) => x + 600)} className="mt-2 h-10 w-full rounded-lg text-sm text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-900">
