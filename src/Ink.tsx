@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import { useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import {
   hits,
   INK_COLORS,
@@ -33,6 +33,15 @@ const FINGER_KEY = 'sitrep-finger-draw'
 type Action = { add: Stroke } | { erase: Stroke[] }
 type Gesture = { id: number; erase: boolean; points: Point[]; remaining: Stroke[]; erased: Stroke[] }
 
+// The nearest scrolling container: the page normally, the notes panel in full screen.
+function scrollParent(el: Element | null): Element {
+  for (let n = el?.parentElement; n; n = n.parentElement) {
+    const o = getComputedStyle(n).overflowY
+    if ((o === 'auto' || o === 'scroll') && n.scrollHeight > n.clientHeight) return n
+  }
+  return document.scrollingElement ?? document.documentElement
+}
+
 function readFinger() {
   try {
     return localStorage.getItem(FINGER_KEY) === '1'
@@ -51,6 +60,8 @@ export default function Ink({ strokes, onChange }: { strokes: Stroke[]; onChange
   const [extra, setExtra] = useState(0) // "Add space" / auto-grow, not saved
   const [live, setLive] = useState<Point[] | null>(null)
   const gesture = useRef<Gesture | null>(null)
+  // A finger dragging the canvas while finger drawing is off: we scroll by hand (see touchAction).
+  const scroll = useRef<{ id: number; y: number; el: Element } | null>(null)
   const frame = useRef(0)
   const grewAt = useRef(0) // the height we last grew from, so one frame can't grow twice
   const [history, setHistory] = useState<{ undo: Action[]; redo: Action[] }>({ undo: [], redo: [] })
@@ -58,21 +69,6 @@ export default function Ink({ strokes, onChange }: { strokes: Stroke[]; onChange
   const drawTool: Tool = tool === 'eraser' ? 'pen' : tool
   const size = SIZES[drawTool][sizeIndex]
   const height = inkHeight(strokes) + extra
-
-  // iPadOS lets the Pencil scroll the page; cancel that for stylus touches only, so fingers still scroll.
-  useEffect(() => {
-    const el = svg.current
-    if (!el) return
-    const stopStylus = (e: TouchEvent) => {
-      if ([...e.touches].some((t) => (t as Touch & { touchType?: string }).touchType === 'stylus')) e.preventDefault()
-    }
-    el.addEventListener('touchstart', stopStylus, { passive: false })
-    el.addEventListener('touchmove', stopStylus, { passive: false })
-    return () => {
-      el.removeEventListener('touchstart', stopStylus)
-      el.removeEventListener('touchmove', stopStylus)
-    }
-  }, [])
 
   function toggleFinger() {
     setFinger(!finger)
@@ -105,11 +101,16 @@ export default function Ink({ strokes, onChange }: { strokes: Stroke[]; onChange
 
   function down(e: ReactPointerEvent<SVGSVGElement>) {
     if (gesture.current) return // a second pointer (e.g. a palm) while drawing
+    if (e.pointerType === 'touch' && !finger) {
+      scroll.current = { id: e.pointerId, y: e.clientY, el: scrollParent(e.currentTarget) }
+      return
+    }
     const allowed =
       e.pointerType === 'pen' || (e.pointerType === 'mouse' && e.button === 0) || (e.pointerType === 'touch' && finger)
     if (!allowed) return
     e.preventDefault()
     e.currentTarget.setPointerCapture(e.pointerId)
+    scroll.current = null // the Pencil wins over a resting palm
     // A Windows pen's eraser end reports button 32.
     const erase = tool === 'eraser' || (e.buttons & 32) !== 0
     gesture.current = { id: e.pointerId, erase, points: [toPoint(e.nativeEvent)], remaining: strokes, erased: [] }
@@ -118,6 +119,12 @@ export default function Ink({ strokes, onChange }: { strokes: Stroke[]; onChange
   }
 
   function move(e: ReactPointerEvent<SVGSVGElement>) {
+    const sc = scroll.current
+    if (sc && e.pointerId === sc.id && !gesture.current) {
+      sc.el.scrollBy(0, sc.y - e.clientY)
+      sc.y = e.clientY
+      return
+    }
     const g = gesture.current
     if (!g || e.pointerId !== g.id) return
     // Coalesced events carry every Pencil sample between frames, for smoother strokes.
@@ -141,6 +148,7 @@ export default function Ink({ strokes, onChange }: { strokes: Stroke[]; onChange
   }
 
   function up(e: ReactPointerEvent<SVGSVGElement>) {
+    if (scroll.current?.id === e.pointerId) scroll.current = null
     const g = gesture.current
     if (!g || e.pointerId !== g.id) return
     gesture.current = null
@@ -235,7 +243,9 @@ export default function Ink({ strokes, onChange }: { strokes: Stroke[]; onChange
       <svg
         ref={svg}
         viewBox={`0 0 ${INK_WIDTH} ${height}`}
-        style={{ aspectRatio: `${INK_WIDTH} / ${height}`, touchAction: finger ? 'none' : 'pan-y' }}
+        // touch-action none: Safari delivers every Pencil sample immediately instead of holding
+        // events back while it decides whether a gesture is a scroll. Finger scrolling is done above.
+        style={{ aspectRatio: `${INK_WIDTH} / ${height}`, touchAction: 'none' }}
         shapeRendering="geometricPrecision"
         className={`block w-full select-none [-webkit-touch-callout:none] ${tool === 'eraser' ? 'cursor-cell' : 'cursor-crosshair'}`}
         onPointerDown={down}
