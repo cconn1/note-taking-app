@@ -41,7 +41,7 @@ export default function SessionPage() {
       setTimeout(() => setConfirmDelete(false), 3000)
       return
     }
-    // Its tasks move to the Inbox (foreign key: on delete set null).
+    // Its tasks are kept, just no longer tied to a session (foreign key: on delete set null).
     const { error } = await supabase.from('pages').delete().eq('id', id)
     if (error) return showError(`Couldn't delete session: ${error.message}`)
     navigate('/', { replace: true })

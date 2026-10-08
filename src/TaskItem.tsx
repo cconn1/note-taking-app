@@ -2,6 +2,7 @@ import { useRef, useState, type PointerEvent } from 'react'
 import { Link } from 'react-router'
 import { refresh, showError, showToast } from './lib/app'
 import { dueLabel, today } from './lib/dates'
+import { useLists } from './lib/lists'
 import { supabase, type Task } from './lib/supabase'
 
 // Faint on touch screens, hidden until hover with a mouse.
@@ -16,10 +17,12 @@ export default function TaskItem({
   task: Task
   onChange: (t: Task) => void
   onDelete: (id: string) => void
-  /** Show where the task lives: a session link, or null for Inbox. Omit to hide (on its own session page). */
+  /** The task's session, shown as a link. Omit on the session's own page; null = not from a session. */
   source?: { id: string; title: string } | null
 }) {
   const [checked, setChecked] = useState(!!task.completed_at)
+  const lists = useLists()
+  const list = lists.find((l) => l.id === task.list_id)
   // Swipe left to delete (finger only; the Pencil writes and the mouse has the × button).
   const [dx, setDx] = useState(0)
   const [dragging, setDragging] = useState(false)
@@ -48,11 +51,11 @@ export default function TaskItem({
     }
     onDelete(task.id)
     // Only the task's own columns (not a joined session) so Undo can put the same row back.
-    const { id, page_id, text, due_date, sort_order, created_at, completed_at } = task
+    const { id, page_id, list_id, text, due_date, sort_order, created_at, completed_at } = task
     showToast({
       message: 'Task deleted',
       undo: async () => {
-        const { error } = await supabase.from('tasks').insert({ id, page_id, text, due_date, sort_order, created_at, completed_at })
+        const { error } = await supabase.from('tasks').insert({ id, page_id, list_id, text, due_date, sort_order, created_at, completed_at })
         if (error) return showError(`Couldn't restore task: ${error.message}`)
         refresh()
       },
@@ -144,17 +147,37 @@ export default function TaskItem({
           className={`h-11 min-w-0 flex-1 bg-transparent text-base outline-none transition-colors duration-300 ${checked ? 'text-neutral-400 line-through' : ''}`}
         />
 
-        {source !== undefined &&
-          (source ? (
-            <Link
-              to={`/sessions/${source.id}`}
-              className="max-w-32 shrink-0 truncate rounded-full bg-accent/10 px-2.5 py-1 text-xs font-medium text-accent-text hover:bg-accent/20"
+        {source && (
+          <Link
+            to={`/sessions/${source.id}`}
+            className="max-w-32 shrink-0 truncate rounded-full bg-accent/10 px-2.5 py-1 text-xs font-medium text-accent-text hover:bg-accent/20"
+          >
+            {source.title || 'Untitled'}
+          </Link>
+        )}
+
+        {lists.length > 0 && (
+          <label
+            className={`relative flex h-8 max-w-28 shrink-0 cursor-pointer items-center rounded-full px-2.5 text-xs font-medium ${
+              list ? 'bg-tan/25 text-neutral-700 dark:bg-tan/15 dark:text-tan' : `text-neutral-400 ${subtle}`
+            }`}
+          >
+            <span className="truncate">{list ? list.name : '+ List'}</span>
+            <select
+              aria-label="List"
+              value={task.list_id ?? ''}
+              onChange={(e) => update({ list_id: e.target.value || null })}
+              className="absolute inset-0 cursor-pointer opacity-0"
             >
-              {source.title || 'Untitled'}
-            </Link>
-          ) : (
-            <span className="shrink-0 rounded-full px-2.5 py-1 text-xs text-neutral-400">Inbox</span>
-          ))}
+              <option value="">No list</option>
+              {lists.map((l) => (
+                <option key={l.id} value={l.id}>
+                  {l.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
 
         <label
           className={`relative flex h-8 shrink-0 cursor-pointer items-center rounded-full px-2.5 text-xs font-medium ${

@@ -22,7 +22,8 @@ export type Page = {
 
 export type Task = {
   id: string
-  page_id: string | null // null = Inbox
+  page_id: string | null // null = not from a session
+  list_id: string | null // Managers, School, ... (optional)
   text: string
   due_date: string | null
   sort_order: number

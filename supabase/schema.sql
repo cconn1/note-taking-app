@@ -44,18 +44,37 @@ create table public.tasks (
   foreign key (page_id, user_id) references public.pages (id, user_id) on delete set null (page_id)
 );
 
+-- Your own to-do lists (Managers, School, ...). Each task can belong to one.
+create table public.lists (
+  id         uuid primary key default gen_random_uuid(),
+  user_id    uuid not null default auth.uid() references auth.users on delete cascade,
+  name       text not null check (length(btrim(name)) between 1 and 40),
+  created_at timestamptz not null default now(),
+  unique (id, user_id),
+  unique (user_id, name)
+);
+
+alter table public.tasks
+  add column list_id uuid,
+  -- Only your own lists; deleting a list keeps its tasks (they just lose the label).
+  add foreign key (list_id, user_id) references public.lists (id, user_id) on delete set null (list_id);
+
 create index on public.pages (user_id, updated_at desc);
+create index on public.tasks (list_id);
 create index on public.pages (user_id, date desc);
 create index on public.tasks (user_id, completed_at, due_date);
 create index on public.tasks (page_id);
 
 alter table public.pages enable row level security;
 alter table public.tasks enable row level security;
+alter table public.lists enable row level security;
 
 create policy "own pages" on public.pages for all to authenticated
   using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()));
 create policy "own tasks" on public.tasks for all to authenticated
   using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()));
+create policy "own lists" on public.lists for all to authenticated
+  using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()));
 
 -- Explicit, in case the project doesn't auto-expose new tables to the API. RLS still applies.
-grant select, insert, update, delete on public.pages, public.tasks to authenticated;
+grant select, insert, update, delete on public.pages, public.tasks, public.lists to authenticated;
