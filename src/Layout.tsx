@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
-import { NavLink, Outlet, useNavigate } from 'react-router'
+import { NavLink, Outlet, useLocation, useMatch, useNavigate } from 'react-router'
 import { refresh, showError, type Toast } from './lib/app'
 import { supabase } from './lib/supabase'
 
@@ -9,11 +9,26 @@ const NAV = [
   { to: '/search', label: 'Search', end: false },
 ]
 
+const SidebarIcon = () => (
+  <svg viewBox="0 0 20 20" className="size-5" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden>
+    <rect x="2.5" y="3.5" width="15" height="13" rx="2" />
+    <path d="M7.5 3.5v13" />
+  </svg>
+)
+
 const isTyping = (el: EventTarget | null) =>
   el instanceof HTMLElement && (el.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName))
 
 export default function Layout({ email }: { email?: string }) {
   const navigate = useNavigate()
+  const { pathname } = useLocation()
+  // On a session page, Quick Add files tasks into that session instead of the Inbox.
+  const pageId = useMatch('/sessions/:id')?.params.id
+  // The sidebar starts hidden on session pages (room for notes) and shown elsewhere.
+  // A toggle only lasts until you navigate to another screen.
+  const [sidebarPref, setSidebarPref] = useState<{ path: string; open: boolean } | null>(null)
+  const sidebarOpen = sidebarPref?.path === pathname ? sidebarPref.open : !pageId
+  const toggleSidebar = () => setSidebarPref({ path: pathname, open: !sidebarOpen })
   const [error, setError] = useState<string | null>(null)
   const [toast, setToast] = useState<Toast | null>(null)
   const dialog = useRef<HTMLDialogElement>(null)
@@ -57,7 +72,7 @@ export default function Layout({ email }: { email?: string }) {
     e.preventDefault()
     const t = text.trim()
     if (!t) return
-    const { error } = await supabase.from('tasks').insert({ text: t, due_date: due || null })
+    const { error } = await supabase.from('tasks').insert({ text: t, due_date: due || null, page_id: pageId ?? null })
     if (error) return showError(`Couldn't add task: ${error.message}`)
     setText('')
     setDue('')
@@ -72,8 +87,15 @@ export default function Layout({ email }: { email?: string }) {
   return (
     <div className="min-h-dvh md:flex">
       {/* iPad / desktop */}
-      <nav className="sticky top-0 hidden h-dvh w-52 shrink-0 flex-col gap-1 border-r border-neutral-200 p-3 md:flex dark:border-neutral-800">
-        <div className="px-3 py-3 text-lg font-semibold tracking-tight">Lists</div>
+      <nav
+        className={`sticky top-0 hidden h-dvh w-52 shrink-0 flex-col gap-1 border-r border-neutral-200 p-3 dark:border-neutral-800 ${sidebarOpen ? 'md:flex' : ''}`}
+      >
+        <div className="flex items-center justify-between py-1.5 pl-3">
+          <span className="text-lg font-semibold tracking-tight">Lists</span>
+          <button onClick={toggleSidebar} aria-label="Hide sidebar" className="grid size-10 place-items-center rounded-lg text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-900">
+            <SidebarIcon />
+          </button>
+        </div>
         <button
           onClick={openQuickAdd}
           className="mb-2 flex h-11 items-center justify-between rounded-lg bg-accent px-3 font-medium text-white hover:bg-accent-hover"
@@ -95,15 +117,25 @@ export default function Layout({ email }: { email?: string }) {
         </div>
       </nav>
 
-      <main className="min-w-0 flex-1 pb-36 md:pb-0">
+      {!sidebarOpen && (
+        <button
+          onClick={toggleSidebar}
+          aria-label="Show sidebar"
+          className="fixed top-3 left-3 z-30 hidden size-10 place-items-center rounded-lg text-neutral-500 hover:bg-neutral-100 md:grid dark:hover:bg-neutral-900"
+        >
+          <SidebarIcon />
+        </button>
+      )}
+
+      <main className={`min-w-0 flex-1 pb-36 md:pb-0 ${sidebarOpen ? '' : 'md:pl-12'}`}>
         <Outlet />
       </main>
 
-      {/* Phone: floating Add button above the bottom bar */}
+      {/* Floating Add button: always on a phone (above the bottom bar); on iPad/desktop only on session pages. */}
       <button
         onClick={openQuickAdd}
-        aria-label="Add task"
-        className="fixed right-4 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] grid size-14 place-items-center rounded-full bg-accent text-3xl leading-none text-white shadow-lg hover:bg-accent-hover md:hidden"
+        aria-label={pageId ? 'Add action item' : 'Add task'}
+        className={`fixed right-4 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-30 grid size-14 place-items-center rounded-full bg-accent text-3xl leading-none text-white shadow-lg hover:bg-accent-hover ${pageId ? 'md:right-6 md:bottom-6' : 'md:hidden'}`}
       >
         +
       </button>
@@ -129,7 +161,7 @@ export default function Layout({ email }: { email?: string }) {
       >
         <form onSubmit={quickAdd} className="flex flex-col gap-3 p-4">
           <label htmlFor="quick-add" className="text-sm font-medium text-neutral-500">
-            Add to Inbox
+            {pageId ? 'Add action item to this session' : 'Add to Inbox'}
           </label>
           <input
             id="quick-add"

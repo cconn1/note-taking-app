@@ -1,4 +1,4 @@
-import { useCallback, useState, type FormEvent } from 'react'
+import { useCallback, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router'
 import Notes from './Notes'
 import TaskItem from './TaskItem'
@@ -7,7 +7,7 @@ import { byDue } from './lib/dates'
 import { PAGE_TYPES, supabase, type Page, type PageType, type Task } from './lib/supabase'
 
 const meta =
-  'h-10 rounded-lg border border-transparent bg-transparent px-2 text-sm text-neutral-600 outline-none hover:border-neutral-200 focus:border-accent dark:text-neutral-400 dark:hover:border-neutral-800'
+  'h-9 rounded-lg border border-transparent bg-transparent px-1.5 text-sm text-neutral-600 outline-none hover:border-neutral-200 focus:border-accent dark:text-neutral-400 dark:hover:border-neutral-800'
 
 export default function SessionPage() {
   const id = useParams().id!
@@ -15,7 +15,6 @@ export default function SessionPage() {
   const location = useLocation()
   const [page, setPage] = useState<Page | null>()
   const [tasks, setTasks] = useState<Task[]>([])
-  const [newTask, setNewTask] = useState('')
   const [showDone, setShowDone] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
 
@@ -48,19 +47,6 @@ export default function SessionPage() {
     navigate('/', { replace: true })
   }
 
-  async function addTask(e: FormEvent) {
-    e.preventDefault()
-    const text = newTask.trim()
-    if (!text) return
-    setNewTask('')
-    const { data, error } = await supabase.from('tasks').insert({ text, page_id: id }).select().single()
-    if (error) {
-      setNewTask(text)
-      return showError(`Couldn't add task: ${error.message}`)
-    }
-    setTasks((ts) => [...ts, data])
-  }
-
   const replace = (t: Task) => setTasks((ts) => ts.map((x) => (x.id === t.id ? t : x)))
   const drop = (taskId: string) => setTasks((ts) => ts.filter((x) => x.id !== taskId))
 
@@ -79,14 +65,16 @@ export default function SessionPage() {
   const done = tasks.filter((t) => t.completed_at).sort((a, b) => b.completed_at!.localeCompare(a.completed_at!))
 
   return (
-    <div className="mx-auto flex max-w-3xl flex-col gap-10 px-4 py-6 md:px-8 md:py-10">
-      <header>
+    <div className="mx-auto flex max-w-4xl flex-col gap-4 px-4 py-3 md:px-8 md:py-5">
+      {/* One compact row: title, date, type, delete. Wraps on a phone. */}
+      <header className="flex flex-wrap items-center gap-x-1 gap-y-0">
         <button
           // Back to wherever you came from (Home, Sessions or Search); Home if opened directly.
           onClick={() => (location.key === 'default' ? navigate('/') : navigate(-1))}
-          className="mb-2 inline-flex h-10 items-center text-sm text-neutral-500 md:hidden"
+          aria-label="Back"
+          className="-ml-2 grid size-10 place-items-center text-2xl text-neutral-500 md:hidden"
         >
-          ‹ Back
+          ‹
         </button>
         <input
           key={page.title}
@@ -95,9 +83,9 @@ export default function SessionPage() {
           placeholder="Untitled"
           onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
           onBlur={(e) => e.target.value !== page.title && updatePage({ title: e.target.value.trim() })}
-          className="-mx-2 w-full rounded-lg border border-transparent bg-transparent px-2 py-1 text-3xl font-semibold tracking-tight outline-none hover:border-neutral-200 focus:border-accent dark:hover:border-neutral-800"
+          className="min-w-0 flex-1 basis-48 rounded-lg border border-transparent bg-transparent px-1.5 py-1 text-xl font-semibold tracking-tight outline-none hover:border-neutral-200 focus:border-accent dark:hover:border-neutral-800"
         />
-        <div className="-mx-2 mt-1 flex flex-wrap items-center gap-1">
+        <div className="flex items-center">
           <input
             type="date"
             aria-label="Date"
@@ -117,50 +105,43 @@ export default function SessionPage() {
           </select>
           <button
             onClick={deletePage}
-            className={`ml-auto h-10 rounded-lg px-3 text-sm ${confirmDelete ? 'bg-red-600 font-medium text-white' : 'text-neutral-400 hover:text-red-600'}`}
+            className={`h-9 rounded-lg px-2 text-sm ${confirmDelete ? 'bg-red-600 font-medium text-white' : 'text-neutral-400 hover:text-red-600'}`}
           >
-            {confirmDelete ? 'Tap again to delete' : 'Delete session'}
+            {confirmDelete ? 'Tap again to delete' : 'Delete'}
           </button>
         </div>
       </header>
 
-      <section>
-        <h2 className="mb-2 text-sm font-semibold tracking-wide text-neutral-500 uppercase">Action Items</h2>
-        <form onSubmit={addTask} className="flex gap-2">
-          <input
-            value={newTask}
-            onChange={(e) => setNewTask(e.target.value)}
-            placeholder="Add an action item"
-            enterKeyHint="done"
-            className="h-12 min-w-0 flex-1 rounded-lg border border-neutral-200 bg-transparent px-4 text-base outline-none focus:border-accent focus:ring-2 focus:ring-accent/30 dark:border-neutral-800"
-          />
-          <button
-            disabled={!newTask.trim()}
-            className="h-12 shrink-0 rounded-lg bg-accent px-5 font-medium text-white hover:bg-accent-hover disabled:opacity-40"
-          >
-            Add
-          </button>
-        </form>
-        <ul className="mt-2">
-          {open.map((t) => (
-            <TaskItem key={t.id} task={t} onChange={replace} onDelete={drop} />
-          ))}
-        </ul>
-        {done.length > 0 && (
-          <>
-            <button onClick={() => setShowDone(!showDone)} className="mt-2 h-10 text-sm text-neutral-500 hover:underline">
-              {showDone ? 'Hide' : 'Show'} completed ({done.length})
-            </button>
-            {showDone && (
-              <ul>
-                {done.map((t) => (
-                  <TaskItem key={t.id} task={t} onChange={replace} onDelete={drop} />
-                ))}
-              </ul>
-            )}
-          </>
-        )}
-      </section>
+      {/* Action items dropdown. Add new ones with the + button. */}
+      <details className="group rounded-xl border border-neutral-200 dark:border-neutral-800">
+        <summary className="flex h-12 cursor-pointer list-none items-center gap-2 px-4 font-medium select-none [&::-webkit-details-marker]:hidden">
+          <span className="text-neutral-400 transition-transform group-open:rotate-90">▸</span>
+          Action items
+          <span className="text-sm font-normal text-neutral-500">{open.length} open</span>
+        </summary>
+        <div className="border-t border-neutral-200 px-2 pb-1 dark:border-neutral-800">
+          {open.length === 0 && <p className="px-2 py-3 text-sm text-neutral-500">No open action items. Tap + to add one.</p>}
+          <ul>
+            {open.map((t) => (
+              <TaskItem key={t.id} task={t} onChange={replace} onDelete={drop} />
+            ))}
+          </ul>
+          {done.length > 0 && (
+            <>
+              <button onClick={() => setShowDone(!showDone)} className="h-10 px-2 text-sm text-neutral-500 hover:underline">
+                {showDone ? 'Hide' : 'Show'} completed ({done.length})
+              </button>
+              {showDone && (
+                <ul>
+                  {done.map((t) => (
+                    <TaskItem key={t.id} task={t} onChange={replace} onDelete={drop} />
+                  ))}
+                </ul>
+              )}
+            </>
+          )}
+        </div>
+      </details>
 
       <Notes key={id} pageId={id} server={page} />
     </div>

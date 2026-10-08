@@ -138,7 +138,7 @@ export default function Notes({ pageId, server }: { pageId: string; server: Serv
         onChange={(e) => change(e.target.value)}
         onBlur={() => save()}
         placeholder="Type notes…"
-        className="min-h-64 w-full resize-none rounded-lg border border-neutral-200 bg-transparent p-4 text-base leading-relaxed outline-none field-sizing-content focus:border-accent focus:ring-2 focus:ring-accent/30 dark:border-neutral-800"
+        className="min-h-[calc(100dvh-13rem)] w-full resize-none rounded-lg border border-neutral-200 bg-transparent p-4 text-base leading-relaxed outline-none field-sizing-content focus:border-accent focus:ring-2 focus:ring-accent/30 dark:border-neutral-800"
       />
     </section>
   )
