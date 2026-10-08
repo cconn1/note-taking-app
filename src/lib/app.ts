@@ -3,6 +3,10 @@ import { useEffect } from 'react'
 // Shown by Layout's error bar.
 export const showError = (message: string) => window.dispatchEvent(new CustomEvent('app-error', { detail: message }))
 
+// Shown by Layout's toast bar, e.g. "Task deleted · Undo".
+export type Toast = { message: string; undo?: () => void }
+export const showToast = (toast: Toast) => window.dispatchEvent(new CustomEvent('app-toast', { detail: toast }))
+
 // Tell the open screen to reload, e.g. after Quick Add creates a task.
 export const refresh = () => window.dispatchEvent(new Event('app-refresh'))
 

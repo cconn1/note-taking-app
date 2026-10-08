@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router'
-import { refresh, showError } from './lib/app'
+import { refresh, showError, type Toast } from './lib/app'
 import { supabase } from './lib/supabase'
 
 const NAV = [
@@ -15,6 +15,7 @@ const isTyping = (el: EventTarget | null) =>
 export default function Layout({ email }: { email?: string }) {
   const navigate = useNavigate()
   const [error, setError] = useState<string | null>(null)
+  const [toast, setToast] = useState<Toast | null>(null)
   const dialog = useRef<HTMLDialogElement>(null)
   const [text, setText] = useState('')
   const [due, setDue] = useState('')
@@ -23,6 +24,7 @@ export default function Layout({ email }: { email?: string }) {
 
   useEffect(() => {
     const onError = (e: Event) => setError((e as CustomEvent<string>).detail)
+    const onToast = (e: Event) => setToast((e as CustomEvent<Toast>).detail)
     // Desktop shortcuts: n = new task, / = search. Ignored while typing in a field.
     const onKey = (e: KeyboardEvent) => {
       if (e.ctrlKey || e.metaKey || e.altKey || isTyping(e.target) || dialog.current?.open) return
@@ -35,12 +37,21 @@ export default function Layout({ email }: { email?: string }) {
       }
     }
     window.addEventListener('app-error', onError)
+    window.addEventListener('app-toast', onToast)
     window.addEventListener('keydown', onKey)
     return () => {
       window.removeEventListener('app-error', onError)
+      window.removeEventListener('app-toast', onToast)
       window.removeEventListener('keydown', onKey)
     }
   }, [navigate])
+
+  // Toasts disappear after 5 seconds; a new one restarts the clock.
+  useEffect(() => {
+    if (!toast) return
+    const timer = setTimeout(() => setToast(null), 5000)
+    return () => clearTimeout(timer)
+  }, [toast])
 
   async function quickAdd(e: FormEvent) {
     e.preventDefault()
@@ -143,6 +154,26 @@ export default function Layout({ email }: { email?: string }) {
           </div>
         </form>
       </dialog>
+
+      {toast && (
+        <div
+          role="status"
+          className="fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom))] left-4 right-20 z-40 mx-auto flex max-w-sm items-center gap-3 rounded-lg bg-neutral-900 px-4 py-2 text-sm text-white shadow-lg md:right-4 md:bottom-6 dark:bg-neutral-100 dark:text-neutral-900"
+        >
+          <span className="flex-1">{toast.message}</span>
+          {toast.undo && (
+            <button
+              onClick={() => {
+                toast.undo?.()
+                setToast(null)
+              }}
+              className="-my-1 h-10 px-2 font-semibold text-tan dark:text-accent"
+            >
+              Undo
+            </button>
+          )}
+        </div>
+      )}
 
       {error && (
         <div
