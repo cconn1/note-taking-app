@@ -20,7 +20,7 @@ export default function SessionPage() {
 
   const load = useCallback(async () => {
     const [p, t] = await Promise.all([
-      supabase.from('pages').select('id, title, date, type, notes, notes_updated_at, updated_at').eq('id', id).maybeSingle(),
+      supabase.from('pages').select('id, title, date, type, notes, notes_updated_at, ink, ink_updated_at, updated_at').eq('id', id).maybeSingle(),
       supabase.from('tasks').select('*').eq('page_id', id),
     ])
     if (p.error || t.error) return showError(`Couldn't load session: ${(p.error ?? t.error)!.message}`)
@@ -146,7 +146,7 @@ export default function SessionPage() {
         </div>
       </details>
 
-      <Notes key={id} pageId={id} server={page} />
+      <Notes key={id} pageId={id} page={page} />
     </div>
   )
 }

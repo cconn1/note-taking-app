@@ -1,115 +1,60 @@
-import { useEffect, useRef, useState } from 'react'
-import { showError } from './lib/app'
-import { supabase } from './lib/supabase'
+import { useState } from 'react'
+import Ink from './Ink'
+import type { Stroke } from './lib/ink'
+import type { Page } from './lib/supabase'
+import { useSyncedField, type SaveStatus } from './useSyncedField'
 
-type Server = { notes: string; notes_updated_at: string }
+type Tab = 'typed' | 'ink'
+const TAB_KEY = 'sitrep-notes-tab'
+const STATUS: Record<SaveStatus, string> = { saved: 'Saved', unsaved: 'Unsaved', saving: 'Saving…', error: 'Not saved' }
 
-// Typed notes with autosave. A save only succeeds if notes_updated_at still matches the version this
-// device last saw; otherwise another device saved first and the user picks Reload theirs / Keep mine.
-export default function Notes({ pageId, server }: { pageId: string; server: Server }) {
-  const [text, setText] = useState(server.notes)
-  const [conflict, setConflict] = useState<Server | null>(null)
-  const [status, setStatus] = useState<'saved' | 'unsaved' | 'saving' | 'error'>('saved')
+// Strokes are never edited in place, so comparing ids is enough to tell two versions apart.
+const sameInk = (a: Stroke[], b: Stroke[]) => a.length === b.length && a.every((s, i) => s.id === b[i].id)
+
+function readTab(): Tab {
+  try {
+    return localStorage.getItem(TAB_KEY) === 'ink' ? 'ink' : 'typed'
+  } catch {
+    return 'typed'
+  }
+}
+
+// A session's notes: typed (Scribble-friendly) and handwritten, each autosaved with its own
+// conflict check. Both stay loaded while you switch tabs, so nothing unsaved is lost.
+export default function Notes({ pageId, page }: { pageId: string; page: Page }) {
+  const typed = useSyncedField(pageId, 'notes', { value: page.notes, ts: page.notes_updated_at }, Object.is)
+  const ink = useSyncedField(pageId, 'ink', { value: page.ink, ts: page.ink_updated_at }, sameInk)
+  // Remembered per device: the iPad can open on Handwriting, the PC on Typed.
+  const [tab, setTab] = useState<Tab>(readTab)
   // Full screen: notes cover everything except the floating + (which sits above, z-40).
   const [full, setFull] = useState(false)
-  // Refs, because saves run from timers and event listeners that would otherwise see stale state.
-  const s = useRef({ text: server.notes, base: server.notes_updated_at, dirty: false, saving: false, again: false, conflict: false, timer: 0 }).current
 
-  function raise(row: Server) {
-    s.conflict = true
-    setConflict(row)
-    setStatus('unsaved')
-  }
-
-  async function save(force = false) {
-    clearTimeout(s.timer)
-    if (s.saving) {
-      s.again = true
-      return
-    }
-    if (!force && (!s.dirty || s.conflict)) return
-
-    s.saving = true
-    setStatus('saving')
-    const sent = s.text
-    let q = supabase.from('pages').update({ notes: sent }).eq('id', pageId)
-    if (!force) q = q.eq('notes_updated_at', s.base)
-    const { data, error } = await q.select('notes_updated_at')
-    s.saving = false
-
-    if (error) {
-      setStatus('error')
-      return showError(`Couldn't save notes: ${error.message}`)
-    }
-    if (data.length) {
-      s.base = data[0].notes_updated_at
-      s.conflict = false
-      setConflict(null)
-    } else {
-      // No row matched: another device saved first (or the session was deleted).
-      const { data: row } = await supabase.from('pages').select('notes, notes_updated_at').eq('id', pageId).maybeSingle()
-      if (!row) return
-      if (row.notes !== sent) return raise(row)
-      s.base = row.notes_updated_at
-    }
-    if (s.text === sent) {
-      s.dirty = false
-      setStatus('saved')
-    }
-    if (s.again || s.dirty) {
-      s.again = false
-      save()
+  function pick(t: Tab) {
+    setTab(t)
+    try {
+      localStorage.setItem(TAB_KEY, t)
+    } catch {
+      // Private mode: the choice just won't stick.
     }
   }
 
-  function change(value: string) {
-    s.text = value
-    s.dirty = true
-    setText(value)
-    setStatus('unsaved')
-    clearTimeout(s.timer)
-    s.timer = window.setTimeout(save, 1000)
+  // One prompt for both kinds of notes.
+  const conflicted = [typed.conflict && 'typed notes', ink.conflict && 'handwriting'].filter(Boolean)
+  const reload = () => (typed.reload(), ink.reload())
+  const keepMine = () => {
+    if (typed.conflict) typed.keepMine()
+    if (ink.conflict) ink.keepMine()
   }
 
-  // A refetch (app opened / refocused) brought a version this device hasn't seen.
-  useEffect(() => {
-    if (server.notes_updated_at === s.base) return
-    if (!s.dirty || server.notes === s.text) {
-      s.base = server.notes_updated_at
-      s.text = server.notes
-      s.dirty = false
-      setText(server.notes)
-      setStatus('saved')
-    } else {
-      raise(server)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- s is a stable ref; only a new server version matters
-  }, [server])
-
-  // Save immediately when the app is backgrounded or the user leaves the page.
-  useEffect(() => {
-    const flush = () => document.visibilityState === 'hidden' && save()
-    document.addEventListener('visibilitychange', flush)
-    return () => {
-      document.removeEventListener('visibilitychange', flush)
-      save()
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount/unmount only
-  }, [])
-
-  function reload() {
-    if (!conflict) return
-    Object.assign(s, { text: conflict.notes, base: conflict.notes_updated_at, dirty: false, conflict: false })
-    setText(conflict.notes)
-    setConflict(null)
-    setStatus('saved')
-  }
-
-  function keepMine() {
-    s.conflict = false
-    setConflict(null)
-    save(true)
-  }
+  const tabBtn = (t: Tab, label: string) => (
+    <button
+      onClick={() => pick(t)}
+      aria-pressed={tab === t}
+      className={`h-8 rounded-md px-3 text-sm font-medium ${tab === t ? 'bg-white text-neutral-900 shadow-sm dark:bg-neutral-800 dark:text-neutral-100' : 'text-neutral-500'}`}
+    >
+      {label}
+    </button>
+  )
 
   return (
     <section
@@ -119,11 +64,14 @@ export default function Notes({ pageId, server }: { pageId: string; server: Serv
           : ''
       }
     >
-      <div className="mb-2 flex items-center justify-between">
-        <h2 className="text-sm font-semibold tracking-wide text-neutral-500 uppercase">Notes</h2>
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <div className="flex rounded-lg bg-neutral-100 p-1 dark:bg-neutral-900">
+          {tabBtn('typed', 'Typed')}
+          {tabBtn('ink', 'Handwriting')}
+        </div>
         <div className="flex items-center gap-1">
           <span className="text-xs text-neutral-400" aria-live="polite">
-            {{ saved: 'Saved', unsaved: 'Unsaved', saving: 'Saving…', error: 'Not saved' }[status]}
+            {STATUS[(tab === 'typed' ? typed : ink).status]}
           </span>
           <button
             onClick={() => setFull(!full)}
@@ -131,22 +79,18 @@ export default function Notes({ pageId, server }: { pageId: string; server: Serv
             className="grid size-10 place-items-center rounded-lg text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-900"
           >
             <svg viewBox="0 0 20 20" className="size-5" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-              {full ? (
-                <path d="M8 3v5H3M12 3v5h5M8 17v-5H3M12 17v-5h5" />
-              ) : (
-                <path d="M3 8V3h5M17 8V3h-5M3 12v5h5M17 12v5h-5" />
-              )}
+              {full ? <path d="M8 3v5H3M12 3v5h5M8 17v-5H3M12 17v-5h5" /> : <path d="M3 8V3h5M17 8V3h-5M3 12v5h5M17 12v5h-5" />}
             </svg>
           </button>
         </div>
       </div>
 
-      {conflict && (
+      {conflicted.length > 0 && (
         <div
           role="alert"
           className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200"
         >
-          <span className="flex-1">These notes were changed on another device.</span>
+          <span className="flex-1">Changed on another device: {conflicted.join(' and ')}.</span>
           <button onClick={reload} className="h-9 rounded-md px-3 font-medium hover:bg-amber-100 dark:hover:bg-amber-900">
             Reload theirs
           </button>
@@ -157,13 +101,18 @@ export default function Notes({ pageId, server }: { pageId: string; server: Serv
       )}
 
       <textarea
-        value={text}
-        onChange={(e) => change(e.target.value)}
-        onBlur={() => save()}
+        value={typed.value}
+        onChange={(e) => typed.change(e.target.value)}
+        onBlur={() => typed.save()}
         onKeyDown={(e) => e.key === 'Escape' && full && setFull(false)}
         placeholder="Type notes…"
+        hidden={tab !== 'typed'}
         className={`${full ? 'flex-1 pb-24' : 'min-h-[calc(100dvh-13rem)]'} w-full resize-none rounded-lg border border-neutral-200 bg-transparent p-4 text-base leading-relaxed outline-none field-sizing-content focus:border-accent focus:ring-2 focus:ring-accent/30 dark:border-neutral-800`}
       />
+
+      <div hidden={tab !== 'ink'} className={full ? 'min-h-0 flex-1 overflow-y-auto pb-24' : ''}>
+        <Ink strokes={ink.value} onChange={ink.change} />
+      </div>
     </section>
   )
 }

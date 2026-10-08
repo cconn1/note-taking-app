@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import type { Stroke } from './ink'
 
 // main.tsx checks the env vars before this module loads.
 export const supabase = createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_ANON_KEY)
@@ -14,6 +15,8 @@ export type Page = {
   type: PageType
   notes: string
   notes_updated_at: string
+  ink: Stroke[]
+  ink_updated_at: string
   updated_at: string
 }
 
