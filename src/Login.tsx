@@ -21,7 +21,7 @@ export default function Login() {
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-sm flex-col justify-center gap-6 p-6">
-      <h1 className="text-3xl font-semibold tracking-tight">Lists</h1>
+      <h1 className="text-3xl font-semibold tracking-tight">SITREP</h1>
 
       <form onSubmit={signIn} className="flex flex-col gap-3">
         <label htmlFor="email" className="text-sm text-neutral-600 dark:text-neutral-400">

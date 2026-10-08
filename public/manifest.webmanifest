@@ -1,6 +1,6 @@
 {
-  "name": "Lists",
-  "short_name": "Lists",
+  "name": "SITREP",
+  "short_name": "SITREP",
   "description": "Meeting notes and to-dos",
   "start_url": "./",
   "scope": "./",

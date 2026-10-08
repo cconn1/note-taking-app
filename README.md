@@ -1,4 +1,4 @@
-# Lists
+# SITREP
 
 Personal meeting notes and to-dos that sync across iPad, iPhone, Mac and Windows.
 React + Vite + TypeScript + Tailwind, with Supabase for sign-in and storage. Hosted on GitHub Pages.
@@ -43,7 +43,7 @@ The app's data is protected by RLS, but the accounts that *run* the app can bypa
 
 Store the recovery codes for each in your password manager.
 
-The Lists login itself is email and password only. Use a unique, generated password. Supabase also supports authenticator-app (TOTP) MFA for app users. It isn't built in here, but could be added later as a code prompt when signing in on a new device.
+The SITREP login itself is email and password only. Use a unique, generated password. Supabase also supports authenticator-app (TOTP) MFA for app users. It isn't built in here, but could be added later as a code prompt when signing in on a new device.
 
 ## Local development
 
@@ -74,6 +74,6 @@ To redeploy without a code change: Actions tab → Deploy to GitHub Pages → Ru
 ### Install it as an app
 
 - **iPad / iPhone (Safari):** open the site → Share → **Add to Home Screen**.
-- **Windows / Mac (Chrome or Edge):** open the site → the install icon in the address bar (or menu → Install Lists).
+- **Windows / Mac (Chrome or Edge):** open the site → the install icon in the address bar (or menu → Install SITREP).
 
 The installed app opens instantly from cache, but needs a connection to load or save data. A new deploy shows up the next time you open the app.

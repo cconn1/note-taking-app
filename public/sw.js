@@ -1,4 +1,4 @@
-// Makes Lists installable and open instantly. Data always comes from Supabase (another origin), never this cache.
+// Makes SITREP installable and open instantly. Data always comes from Supabase (another origin), never this cache.
 // - Pages: network first (revalidated), so a new deploy shows up on the next open; cached copy only when offline.
 // - /assets/*: cache first. Vite puts a content hash in every filename, so they never change.
 // ponytail: old hashed assets pile up in the cache across deploys (small); prune on activate if it ever matters.

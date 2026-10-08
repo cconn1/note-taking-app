@@ -91,7 +91,7 @@ export default function Layout({ email }: { email?: string }) {
         className={`sticky top-0 hidden h-dvh w-52 shrink-0 flex-col gap-1 border-r border-neutral-200 p-3 dark:border-neutral-800 ${sidebarOpen ? 'md:flex' : ''}`}
       >
         <div className="flex items-center justify-between py-1.5 pl-3">
-          <span className="text-lg font-semibold tracking-tight">Lists</span>
+          <span className="text-lg font-semibold tracking-tight">SITREP</span>
           <button onClick={toggleSidebar} aria-label="Hide sidebar" className="grid size-10 place-items-center rounded-lg text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-900">
             <SidebarIcon />
           </button>

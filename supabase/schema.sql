@@ -1,4 +1,4 @@
--- Lists schema. Paste into Supabase Dashboard → SQL Editor → Run.
+-- SITREP schema. Paste into Supabase Dashboard → SQL Editor → Run.
 -- "Sessions" in the UI = the pages table.
 
 create table public.pages (
