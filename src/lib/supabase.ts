@@ -26,3 +26,6 @@ export type Task = {
   created_at: string
   completed_at: string | null
 }
+
+// A task with its session, from select('*, pages(id, title)').
+export type TaskWithPage = Task & { pages: { id: string; title: string } | null }

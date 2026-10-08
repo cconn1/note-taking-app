@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router'
 import { showError } from './lib/app'
 import { dueLabel, today } from './lib/dates'
 import { supabase, type Task } from './lib/supabase'
@@ -10,10 +11,13 @@ export default function TaskItem({
   task,
   onChange,
   onDelete,
+  source,
 }: {
   task: Task
   onChange: (t: Task) => void
   onDelete: (id: string) => void
+  /** Show where the task lives: a session link, or null for Inbox. Omit to hide (on its own session page). */
+  source?: { id: string; title: string } | null
 }) {
   const [checked, setChecked] = useState(!!task.completed_at)
 
@@ -70,6 +74,18 @@ export default function TaskItem({
         }}
         className={`h-11 min-w-0 flex-1 bg-transparent text-base outline-none transition-colors duration-300 ${checked ? 'text-neutral-400 line-through' : ''}`}
       />
+
+      {source !== undefined &&
+        (source ? (
+          <Link
+            to={`/sessions/${source.id}`}
+            className="max-w-32 shrink-0 truncate rounded-full bg-accent/10 px-2.5 py-1 text-xs font-medium text-accent-text hover:bg-accent/20"
+          >
+            {source.title || 'Untitled'}
+          </Link>
+        ) : (
+          <span className="shrink-0 rounded-full px-2.5 py-1 text-xs text-neutral-400">Inbox</span>
+        ))}
 
       <label
         className={`relative flex h-8 shrink-0 cursor-pointer items-center rounded-full px-2.5 text-xs font-medium ${

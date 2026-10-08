@@ -9,6 +9,7 @@ type Row = Pick<Page, 'id' | 'title' | 'date' | 'type'>
 export default function Sessions() {
   const [pages, setPages] = useState<Row[]>()
   const [creating, setCreating] = useState(false)
+  const [filter, setFilter] = useState('')
 
   const load = useCallback(async () => {
     const { data, error } = await supabase
@@ -37,12 +38,23 @@ export default function Sessions() {
 
       {creating && <NewSession onCancel={() => setCreating(false)} />}
 
+      <input
+        type="search"
+        aria-label="Filter sessions"
+        placeholder="Filter by title or type"
+        value={filter}
+        onChange={(e) => setFilter(e.target.value)}
+        className="mb-4 h-11 w-full rounded-lg border border-neutral-200 bg-transparent px-4 text-base outline-none focus:border-accent focus:ring-2 focus:ring-accent/30 dark:border-neutral-800"
+      />
+
       {pages?.length === 0 && !creating && (
         <p className="py-16 text-center text-neutral-500">No sessions yet. Start your first one.</p>
       )}
 
       <ul className="divide-y divide-neutral-200 dark:divide-neutral-800">
-        {pages?.map((p) => (
+        {pages
+          ?.filter((p) => `${p.title} ${p.type}`.toLowerCase().includes(filter.trim().toLowerCase()))
+          .map((p) => (
           <li key={p.id}>
             <Link
               to={`/sessions/${p.id}`}

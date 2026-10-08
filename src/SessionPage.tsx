@@ -1,5 +1,5 @@
 import { useCallback, useState, type FormEvent } from 'react'
-import { Link, useNavigate, useParams } from 'react-router'
+import { Link, useLocation, useNavigate, useParams } from 'react-router'
 import Notes from './Notes'
 import TaskItem from './TaskItem'
 import { showError, useLoad } from './lib/app'
@@ -12,6 +12,7 @@ const meta =
 export default function SessionPage() {
   const id = useParams().id!
   const navigate = useNavigate()
+  const location = useLocation()
   const [page, setPage] = useState<Page | null>()
   const [tasks, setTasks] = useState<Task[]>([])
   const [newTask, setNewTask] = useState('')
@@ -44,7 +45,7 @@ export default function SessionPage() {
     // Its tasks move to the Inbox (foreign key: on delete set null).
     const { error } = await supabase.from('pages').delete().eq('id', id)
     if (error) return showError(`Couldn't delete session: ${error.message}`)
-    navigate('/sessions')
+    navigate('/', { replace: true })
   }
 
   async function addTask(e: FormEvent) {
@@ -68,8 +69,8 @@ export default function SessionPage() {
     return (
       <div className="p-8 text-center text-neutral-500">
         This session no longer exists.{' '}
-        <Link to="/sessions" className="text-accent-text underline">
-          Back to Sessions
+        <Link to="/" className="text-accent-text underline">
+          Go Home
         </Link>
       </div>
     )
@@ -80,9 +81,13 @@ export default function SessionPage() {
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-10 px-4 py-6 md:px-8 md:py-10">
       <header>
-        <Link to="/sessions" className="mb-2 inline-flex h-10 items-center text-sm text-neutral-500 md:hidden">
-          ‹ Sessions
-        </Link>
+        <button
+          // Back to wherever you came from (Home, Sessions or Search); Home if opened directly.
+          onClick={() => (location.key === 'default' ? navigate('/') : navigate(-1))}
+          className="mb-2 inline-flex h-10 items-center text-sm text-neutral-500 md:hidden"
+        >
+          ‹ Back
+        </button>
         <input
           key={page.title}
           defaultValue={page.title}

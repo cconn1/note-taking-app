@@ -1,8 +1,10 @@
 import type { Session } from '@supabase/supabase-js'
 import { useEffect, useState } from 'react'
 import { HashRouter, Navigate, Route, Routes } from 'react-router'
+import Home from './Home'
 import Layout from './Layout'
 import Login from './Login'
+import Search from './Search'
 import SessionPage from './SessionPage'
 import Sessions from './Sessions'
 import { supabase } from './lib/supabase'
@@ -23,9 +25,11 @@ export default function App() {
     <HashRouter>
       <Routes>
         <Route element={<Layout email={session.user.email} />}>
+          <Route path="/" element={<Home />} />
           <Route path="/sessions" element={<Sessions />} />
           <Route path="/sessions/:id" element={<SessionPage />} />
-          <Route path="*" element={<Navigate to="/sessions" replace />} />
+          <Route path="/search" element={<Search />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>
     </HashRouter>
