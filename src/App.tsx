@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import Login from './Login'
 import { supabase } from './lib/supabase'
 
-export default function App({ linkError }: { linkError: string | null }) {
+export default function App() {
   const [session, setSession] = useState<Session | null | undefined>(undefined)
 
   useEffect(() => {
@@ -13,7 +13,7 @@ export default function App({ linkError }: { linkError: string | null }) {
   }, [])
 
   if (session === undefined) return null
-  if (!session) return <Login linkError={linkError} />
+  if (!session) return <Login />
 
   // Placeholder until Phase 2.
   return (

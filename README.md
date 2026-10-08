@@ -7,7 +7,7 @@ React + Vite + TypeScript + Tailwind, with Supabase for sign-in and storage. Hos
 
 The app is a set of static files. Each browser talks directly to Supabase:
 
-- **Auth**: you sign in with a 6-digit code (or the link) from your email. Supabase gives the browser a signed token (JWT) with your user id.
+- **Auth**: you sign in with email and password. Supabase gives the browser a signed token (JWT) with your user id, and keeps you signed in on that device.
 - **Postgres + Row Level Security (RLS)**: every query carries that token, and policies like `user_id = auth.uid()` mean you can only see and change your own rows.
 - **Sync**: each device reloads data when the app opens or comes back into focus. If two devices edit the same session's notes, the second save is detected (per-field `*_updated_at` check) and you choose **Reload** or **Keep mine**.
 
@@ -21,15 +21,13 @@ The app is a set of static files. Each browser talks directly to Supabase:
 1. **Create a project** at [supabase.com/dashboard](https://supabase.com/dashboard) → New project (Free plan). Save the database password. Pick the nearest region.
 2. **Create the tables**: SQL Editor → New query → paste all of [`supabase/schema.sql`](supabase/schema.sql) → Run. Then check Table Editor: you should see `pages` and `tasks`, both marked RLS enabled.
 3. **Get the keys**: Project Settings → API Keys. Copy the **Project URL** and the **publishable key** (or the legacy **anon** key).
-4. **Redirect URLs**: Authentication → URL Configuration.
-   - Site URL: `http://localhost:5173` for now. After deploying, change it to `https://<user>.github.io/<repo>/`.
-   - Redirect URLs: add `http://localhost:5173/**` and `https://<user>.github.io/<repo>/**`.
-5. **Put the code in the emails**: Authentication → Emails → Templates. In both **Magic Link** and **Confirm signup** (your first sign-in uses Confirm signup), add a line such as:
-   ```html
-   <p>Your code: <strong>{{ .Token }}</strong></p>
-   ```
-   Keep the existing link. The code is what you'll use in the installed iPhone/iPad app, because a tapped link opens in Safari, not in the app.
-6. **Sign in once** (see Local development), then lock the door: Authentication → Sign In / Providers → turn off **Allow new users to sign up**.
+4. **Turn off public sign-ups**: Authentication → Sign In / Providers → turn off **Allow new users to sign up**. Leave the Email provider itself enabled.
+5. **Create your account**: Authentication → Users → Add user → Create new user. Enter your email and a password, and tick **Auto Confirm User**.
+
+Forgot the password? In SQL Editor, run (with your email and new password):
+```sql
+update auth.users set encrypted_password = extensions.crypt('new-password', extensions.gen_salt('bf')) where email = 'you@example.com';
+```
 
 > **Free-tier pausing:** Supabase pauses free projects after about 7 days without activity. Daily use keeps it awake. If it does pause, open the project in the dashboard and click **Restore**. Your data is kept.
 
