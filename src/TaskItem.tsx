@@ -56,8 +56,9 @@ export default function TaskItem({
         <span
           className={`grid size-6 place-items-center rounded-full border-2 transition-colors duration-200 ${checked ? 'border-accent bg-accent' : 'border-neutral-300 hover:border-accent dark:border-neutral-600'}`}
         >
-          <svg viewBox="0 0 16 16" className={`size-3.5 text-white transition-transform duration-200 ${checked ? 'scale-100' : 'scale-0'}`}>
-            <path d="M3 8.5l3 3 7-7" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+          <svg viewBox="0 0 16 16" className={`size-4 text-white transition-transform duration-200 ${checked ? 'scale-100' : 'scale-0'}`}>
+            {/* Lightning bolt */}
+            <path d="M9.6 1 3 9.2h4.3L6.4 15 13 6.8H8.7z" fill="currentColor" stroke="currentColor" strokeWidth="0.6" strokeLinejoin="round" />
           </svg>
         </span>
       </button>
