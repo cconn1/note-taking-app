@@ -31,9 +31,23 @@ update auth.users set encrypted_password = extensions.crypt('new-password', exte
 
 > **Free-tier pausing:** Supabase pauses free projects after about 7 days without activity. Daily use keeps it awake. If it does pause, open the project in the dashboard and click **Restore**. Your data is kept.
 
+## Account security (2FA)
+
+The app's data is protected by RLS, but the accounts that *run* the app can bypass it. Turn on two-factor authentication (an authenticator app, not SMS) for each:
+
+| Account | Why it matters | Where |
+|---|---|---|
+| **Supabase** | Full database access: can read every note and change auth settings, regardless of RLS. | Dashboard → avatar → Account preferences → Security ([supabase.com/dashboard/account/security](https://supabase.com/dashboard/account/security)) |
+| **GitHub** | Can change the deployed code, e.g. to capture your password as you type it. | Settings → Password and authentication ([github.com/settings/security](https://github.com/settings/security)) |
+| **Your email** | Password resets for both accounts above go through it. | Gmail: Google Account → Security → 2-Step Verification |
+
+Store the recovery codes for each in your password manager.
+
+The Lists login itself is email and password only. Use a unique, generated password. Supabase also supports authenticator-app (TOTP) MFA for app users. It isn't built in here, but could be added later as a code prompt when signing in on a new device.
+
 ## Local development
 
-Requires Node 20+.
+Requires Node 22.18+ (the self-check script runs TypeScript directly).
 
 ```sh
 npm install
