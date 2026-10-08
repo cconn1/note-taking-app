@@ -10,6 +10,8 @@ export default function Notes({ pageId, server }: { pageId: string; server: Serv
   const [text, setText] = useState(server.notes)
   const [conflict, setConflict] = useState<Server | null>(null)
   const [status, setStatus] = useState<'saved' | 'unsaved' | 'saving' | 'error'>('saved')
+  // Full screen: notes cover everything except the floating + (which sits above, z-40).
+  const [full, setFull] = useState(false)
   // Refs, because saves run from timers and event listeners that would otherwise see stale state.
   const s = useRef({ text: server.notes, base: server.notes_updated_at, dirty: false, saving: false, again: false, conflict: false, timer: 0 }).current
 
@@ -110,12 +112,33 @@ export default function Notes({ pageId, server }: { pageId: string; server: Serv
   }
 
   return (
-    <section>
-      <div className="mb-2 flex items-baseline justify-between">
+    <section
+      className={
+        full
+          ? 'fixed inset-0 z-[35] flex flex-col bg-white px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-4 md:px-8 dark:bg-neutral-950'
+          : ''
+      }
+    >
+      <div className="mb-2 flex items-center justify-between">
         <h2 className="text-sm font-semibold tracking-wide text-neutral-500 uppercase">Notes</h2>
-        <span className="text-xs text-neutral-400" aria-live="polite">
-          {{ saved: 'Saved', unsaved: 'Unsaved', saving: 'Saving…', error: 'Not saved' }[status]}
-        </span>
+        <div className="flex items-center gap-1">
+          <span className="text-xs text-neutral-400" aria-live="polite">
+            {{ saved: 'Saved', unsaved: 'Unsaved', saving: 'Saving…', error: 'Not saved' }[status]}
+          </span>
+          <button
+            onClick={() => setFull(!full)}
+            aria-label={full ? 'Exit full screen' : 'Full screen notes'}
+            className="grid size-10 place-items-center rounded-lg text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-900"
+          >
+            <svg viewBox="0 0 20 20" className="size-5" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              {full ? (
+                <path d="M8 3v5H3M12 3v5h5M8 17v-5H3M12 17v-5h5" />
+              ) : (
+                <path d="M3 8V3h5M17 8V3h-5M3 12v5h5M17 12v5h-5" />
+              )}
+            </svg>
+          </button>
+        </div>
       </div>
 
       {conflict && (
@@ -137,8 +160,9 @@ export default function Notes({ pageId, server }: { pageId: string; server: Serv
         value={text}
         onChange={(e) => change(e.target.value)}
         onBlur={() => save()}
+        onKeyDown={(e) => e.key === 'Escape' && full && setFull(false)}
         placeholder="Type notes…"
-        className="min-h-[calc(100dvh-13rem)] w-full resize-none rounded-lg border border-neutral-200 bg-transparent p-4 text-base leading-relaxed outline-none field-sizing-content focus:border-accent focus:ring-2 focus:ring-accent/30 dark:border-neutral-800"
+        className={`${full ? 'flex-1 pb-24' : 'min-h-[calc(100dvh-13rem)]'} w-full resize-none rounded-lg border border-neutral-200 bg-transparent p-4 text-base leading-relaxed outline-none field-sizing-content focus:border-accent focus:ring-2 focus:ring-accent/30 dark:border-neutral-800`}
       />
     </section>
   )

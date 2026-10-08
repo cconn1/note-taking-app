@@ -135,7 +135,7 @@ export default function Layout({ email }: { email?: string }) {
       <button
         onClick={openQuickAdd}
         aria-label={pageId ? 'Add action item' : 'Add task'}
-        className={`fixed right-4 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-30 grid size-14 place-items-center rounded-full bg-accent text-3xl leading-none text-white shadow-lg hover:bg-accent-hover ${pageId ? 'md:right-6 md:bottom-6' : 'md:hidden'}`}
+        className={`fixed right-4 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-40 grid size-14 place-items-center rounded-full bg-accent text-3xl leading-none text-white shadow-lg hover:bg-accent-hover ${pageId ? 'md:right-6 md:bottom-6' : 'md:hidden'}`}
       >
         +
       </button>
