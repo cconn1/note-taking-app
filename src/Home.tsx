@@ -1,4 +1,4 @@
-import { useCallback, useState, type FormEvent } from 'react'
+import { useCallback, useState } from 'react'
 import { Link } from 'react-router'
 import { NewSession } from './Sessions'
 import TaskItem from './TaskItem'
@@ -14,7 +14,6 @@ export default function Home() {
   const [tasks, setTasks] = useState<TaskWithPage[]>()
   const [recent, setRecent] = useState<Recent[]>()
   const [creating, setCreating] = useState(false)
-  const [newTask, setNewTask] = useState('')
 
   const load = useCallback(async () => {
     const [t, p] = await Promise.all([
@@ -26,19 +25,6 @@ export default function Home() {
     setRecent(p.data)
   }, [])
   useLoad(load)
-
-  async function addInbox(e: FormEvent) {
-    e.preventDefault()
-    const text = newTask.trim()
-    if (!text) return
-    setNewTask('')
-    const { data, error } = await supabase.from('tasks').insert({ text }).select('*, pages(id, title)').single()
-    if (error) {
-      setNewTask(text)
-      return showError(`Couldn't add task: ${error.message}`)
-    }
-    setTasks((ts) => [...(ts ?? []), data as TaskWithPage])
-  }
 
   // Merge so the joined session survives an update (TaskItem returns the bare row).
   const replace = (t: Task) => setTasks((ts) => ts?.map((x) => (x.id === t.id ? { ...x, ...t } : x)))
@@ -71,21 +57,6 @@ export default function Home() {
         {/* To Do */}
         <section>
           <h2 className={`${heading} mb-2`}>To Do</h2>
-          <form onSubmit={addInbox} className="flex gap-2">
-            <input
-              value={newTask}
-              onChange={(e) => setNewTask(e.target.value)}
-              placeholder="Add to Inbox"
-              enterKeyHint="done"
-              className="h-12 min-w-0 flex-1 rounded-lg border border-neutral-200 bg-transparent px-4 text-base outline-none focus:border-accent focus:ring-2 focus:ring-accent/30 dark:border-neutral-800"
-            />
-            <button
-              disabled={!newTask.trim()}
-              className="h-12 shrink-0 rounded-lg bg-accent px-5 font-medium text-white hover:bg-accent-hover disabled:opacity-40"
-            >
-              Add
-            </button>
-          </form>
 
           {tasks && open.length === 0 && (
             <p className="py-12 text-center text-neutral-500">All caught up.</p>
@@ -96,7 +67,7 @@ export default function Home() {
             if (!items.length) return null
             const overdue = group === 'Overdue'
             return (
-              <div key={group} className={`mt-6 ${overdue ? '-mx-3 rounded-xl bg-red-50 px-3 py-2 dark:bg-red-950/40' : ''}`}>
+              <div key={group} className={`mt-6 first-of-type:mt-2 ${overdue ? '-mx-3 rounded-xl bg-red-50 px-3 py-2 dark:bg-red-950/40' : ''}`}>
                 <h3 className={`text-sm font-medium ${overdue ? 'text-red-700 dark:text-red-300' : 'text-neutral-500'}`}>
                   {group} <span className="font-normal opacity-70">{items.length}</span>
                 </h3>
