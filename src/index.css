@@ -2,16 +2,17 @@
 
 @theme {
   --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  /* The one accent color. Change it here. */
-  --color-accent: var(--color-indigo-600);
-  --color-accent-hover: var(--color-indigo-700);
-  --color-accent-text: var(--color-indigo-600);
+  /* OCP-inspired: green accent, tan highlight (matches the app icon). Change them here. */
+  --color-accent: #5b6236;
+  --color-accent-hover: #4a5029;
+  --color-accent-text: #5b6236;
+  --color-tan: #c9b78f;
 }
 
-/* Lighter accent for text on dark backgrounds. */
+/* Lighter green for text on dark backgrounds. */
 @media (prefers-color-scheme: dark) {
   :root {
-    --color-accent-text: var(--color-indigo-400);
+    --color-accent-text: #b4bd86;
   }
 }
 
