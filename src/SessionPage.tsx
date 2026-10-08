@@ -66,7 +66,7 @@ export default function SessionPage() {
 
   return (
     <div className="mx-auto flex max-w-4xl flex-col gap-4 px-4 py-3 md:px-8 md:py-5">
-      {/* One compact row: date, title, type, delete. Wraps on a phone. */}
+      {/* One compact row: date, title, type, delete. On a phone: date, type and delete on top, title below. */}
       <header className="flex flex-wrap items-center gap-x-1 gap-y-0">
         <button
           // Back to wherever you came from (Home, Sessions or Search); Home if opened directly.
@@ -83,18 +83,22 @@ export default function SessionPage() {
           onChange={(e) => e.target.value && updatePage({ date: e.target.value })}
           className={meta}
         />
-        <div className="flex min-w-0 flex-1 basis-48 items-center">
-          <input
+        <div className="contents sm:flex sm:min-w-0 sm:flex-1 sm:basis-48 sm:items-center">
+          <textarea
             key={page.title}
-            // Width follows the text (field-sizing where supported; size= as the fallback),
-            // so the type sits right after the name instead of at the far right.
-            size={Math.max(page.title.length, 8)}
+            // Width follows the text (field-sizing), so the type sits right after the name;
+            // a long title wraps instead of being cut off.
+            rows={1}
             defaultValue={page.title}
             aria-label="Session title"
             placeholder="Untitled"
-            onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+            onKeyDown={(e) => {
+              if (e.key !== 'Enter') return
+              e.preventDefault() // titles are one line; Enter saves
+              e.currentTarget.blur()
+            }}
             onBlur={(e) => e.target.value !== page.title && updatePage({ title: e.target.value.trim() })}
-            className="max-w-full min-w-0 rounded-lg border border-transparent bg-transparent px-1.5 py-1 text-xl font-semibold tracking-tight outline-none field-sizing-content hover:border-neutral-200 focus:border-accent dark:hover:border-neutral-800"
+            className="order-last w-full max-w-full min-w-0 basis-full resize-none rounded-lg border border-transparent bg-transparent px-1.5 py-1 text-xl leading-7 font-semibold tracking-tight outline-none field-sizing-content sm:order-none sm:w-auto sm:basis-auto hover:border-neutral-200 focus:border-accent dark:hover:border-neutral-800"
           />
           <select
             aria-label="Type"
@@ -109,9 +113,19 @@ export default function SessionPage() {
         </div>
         <button
           onClick={deletePage}
-          className={`h-9 rounded-lg px-2 text-sm ${confirmDelete ? 'bg-red-600 font-medium text-white' : 'text-neutral-400 hover:text-red-600'}`}
+          className={`ml-auto h-9 rounded-lg px-2 text-sm sm:ml-0 ${confirmDelete ? 'bg-red-600 font-medium text-white' : 'text-neutral-400 hover:text-red-600'}`}
         >
-          {confirmDelete ? 'Tap again to delete' : 'Delete'}
+          {confirmDelete ? (
+            'Tap again to delete'
+          ) : (
+            <>
+              {/* Trash icon on phones, where the row is tight; the word on wider screens. */}
+              <svg viewBox="0 0 20 20" className="size-5 sm:hidden" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" aria-label="Delete session">
+                <path d="M4 6h12M8 6V4h4v2M6 6l1 10h6l1-10M9 9v4M11 9v4" />
+              </svg>
+              <span className="hidden sm:inline">Delete</span>
+            </>
+          )}
         </button>
       </header>
 

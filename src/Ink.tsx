@@ -184,12 +184,12 @@ export default function Ink({ strokes, onChange }: { strokes: Stroke[]; onChange
   // Highlighter strokes sit under the pen.
   const ordered = [...strokes.filter((s) => s.tool === 'highlighter'), ...strokes.filter((s) => s.tool === 'pen')]
   const btn = (on: boolean) =>
-    `grid h-10 min-w-10 place-items-center rounded-lg px-2 text-sm font-medium ${on ? 'bg-accent text-white' : 'text-neutral-600 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-900'}`
+    `grid h-10 min-w-10 shrink-0 place-items-center rounded-lg px-2 text-sm font-medium ${on ? 'bg-accent text-white' : 'text-neutral-600 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-900'}`
 
   return (
     <div>
       {/* Toolbar stays in view while you scroll the page. */}
-      <div className="sticky top-0 z-10 flex flex-wrap items-center gap-1 border-b border-neutral-200 bg-white/95 py-1 backdrop-blur dark:border-neutral-800 dark:bg-neutral-950/95">
+      <div className="sticky top-0 z-10 flex items-center gap-1 overflow-x-auto [scrollbar-width:none] border-b sm:flex-wrap sm:overflow-visible border-neutral-200 bg-white/95 py-1 backdrop-blur dark:border-neutral-800 dark:bg-neutral-950/95">
         <button onClick={() => pickTool('pen')} className={btn(tool === 'pen')}>
           Pen
         </button>
@@ -199,7 +199,7 @@ export default function Ink({ strokes, onChange }: { strokes: Stroke[]; onChange
         <button onClick={() => pickTool('eraser')} className={btn(tool === 'eraser')}>
           Erase
         </button>
-        <span className="mx-1 h-6 w-px bg-neutral-200 dark:bg-neutral-800" />
+        <span className="mx-1 h-6 w-px shrink-0 bg-neutral-200 dark:bg-neutral-800" />
         {INK_COLORS.map((c) => (
           <button
             key={c}
@@ -209,25 +209,25 @@ export default function Ink({ strokes, onChange }: { strokes: Stroke[]; onChange
             }}
             aria-label={`Color ${c}`}
             aria-pressed={color === c}
-            className="grid size-10 place-items-center"
+            className="grid size-10 shrink-0 place-items-center"
           >
             <span className={`size-6 rounded-full ${DOT[c]} ${color === c ? 'ring-2 ring-accent ring-offset-2 ring-offset-white dark:ring-offset-neutral-950' : ''}`} />
           </button>
         ))}
-        <span className="mx-1 h-6 w-px bg-neutral-200 dark:bg-neutral-800" />
+        <span className="mx-1 h-6 w-px shrink-0 bg-neutral-200 dark:bg-neutral-800" />
         {SIZES.pen.map((_, i) => (
           <button key={i} onClick={() => setSizeIndex(i)} aria-label={`Width ${i + 1}`} aria-pressed={sizeIndex === i} className={btn(sizeIndex === i)}>
             <span className="rounded-full bg-current" style={{ width: 4 + i * 4, height: 4 + i * 4 }} />
           </button>
         ))}
-        <span className="mx-1 h-6 w-px bg-neutral-200 dark:bg-neutral-800" />
+        <span className="mx-1 h-6 w-px shrink-0 bg-neutral-200 dark:bg-neutral-800" />
         <button onClick={undo} disabled={!history.undo.length} aria-label="Undo" className={`${btn(false)} text-lg disabled:opacity-30`}>
           ↶
         </button>
         <button onClick={redo} disabled={!history.redo.length} aria-label="Redo" className={`${btn(false)} text-lg disabled:opacity-30`}>
           ↷
         </button>
-        <button onClick={toggleFinger} aria-pressed={finger} className={`ml-auto ${btn(finger)}`} title="Draw with your finger (phones)">
+        <button onClick={toggleFinger} aria-pressed={finger} className={`ml-auto shrink-0 ${btn(finger)}`} title="Draw with your finger (phones)">
           Finger
         </button>
       </div>
