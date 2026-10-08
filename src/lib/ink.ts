@@ -21,7 +21,7 @@ export function segDist([px, py]: readonly number[], [ax, ay]: readonly number[]
 }
 
 // Ramer–Douglas–Peucker on x/y (kept points keep their pressure). Run once when a stroke ends.
-export function simplify(points: Point[], tolerance = 0.4): Point[] {
+export function simplify(points: Point[], tolerance = 0.25): Point[] {
   if (points.length < 3) return points
   const keep = new Uint8Array(points.length)
   keep[0] = keep[points.length - 1] = 1
@@ -64,11 +64,15 @@ export const inkHeight = (strokes: Stroke[]) =>
 export function outlinePath(points: Point[], tool: Tool, size: number, last = true) {
   // Mice and fingers report a flat 0.5; let perfect-freehand fake pressure from speed instead.
   const simulatePressure = points.every((p) => p[2] === 0.5)
+  // Tuned for small handwriting: modest pressure effect (no hairlines or blobs), low streamline
+  // so the line follows the Pencil tip closely instead of rounding off corners.
   const outline = getStroke(points, {
     size,
-    thinning: tool === 'highlighter' ? 0 : 0.6,
-    smoothing: 0.5,
-    streamline: 0.4,
+    thinning: tool === 'highlighter' ? 0 : 0.3,
+    smoothing: 0.6,
+    streamline: 0.2,
+    // Lift light pressure so the start of a stroke isn't drawn hairline-thin.
+    easing: (t) => Math.sin((t * Math.PI) / 2),
     simulatePressure,
     last,
   })

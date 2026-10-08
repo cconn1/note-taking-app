@@ -236,6 +236,7 @@ export default function Ink({ strokes, onChange }: { strokes: Stroke[]; onChange
         ref={svg}
         viewBox={`0 0 ${INK_WIDTH} ${height}`}
         style={{ aspectRatio: `${INK_WIDTH} / ${height}`, touchAction: finger ? 'none' : 'pan-y' }}
+        shapeRendering="geometricPrecision"
         className={`block w-full select-none [-webkit-touch-callout:none] ${tool === 'eraser' ? 'cursor-cell' : 'cursor-crosshair'}`}
         onPointerDown={down}
         onPointerMove={move}
