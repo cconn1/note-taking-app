@@ -66,7 +66,7 @@ export default function SessionPage() {
 
   return (
     <div className="mx-auto flex max-w-4xl flex-col gap-4 px-4 py-3 md:px-8 md:py-5">
-      {/* One compact row: title, date, type, delete. Wraps on a phone. */}
+      {/* One compact row: date, type, title, delete. Wraps on a phone. */}
       <header className="flex flex-wrap items-center gap-x-1 gap-y-0">
         <button
           // Back to wherever you came from (Home, Sessions or Search); Home if opened directly.
@@ -77,6 +77,23 @@ export default function SessionPage() {
           ‹
         </button>
         <input
+          type="date"
+          aria-label="Date"
+          value={page.date}
+          onChange={(e) => e.target.value && updatePage({ date: e.target.value })}
+          className={meta}
+        />
+        <select
+          aria-label="Type"
+          value={page.type}
+          onChange={(e) => updatePage({ type: e.target.value as PageType })}
+          className={meta}
+        >
+          {PAGE_TYPES.map((t) => (
+            <option key={t}>{t}</option>
+          ))}
+        </select>
+        <input
           key={page.title}
           defaultValue={page.title}
           aria-label="Session title"
@@ -85,31 +102,12 @@ export default function SessionPage() {
           onBlur={(e) => e.target.value !== page.title && updatePage({ title: e.target.value.trim() })}
           className="min-w-0 flex-1 basis-48 rounded-lg border border-transparent bg-transparent px-1.5 py-1 text-xl font-semibold tracking-tight outline-none hover:border-neutral-200 focus:border-accent dark:hover:border-neutral-800"
         />
-        <div className="flex items-center">
-          <input
-            type="date"
-            aria-label="Date"
-            value={page.date}
-            onChange={(e) => e.target.value && updatePage({ date: e.target.value })}
-            className={meta}
-          />
-          <select
-            aria-label="Type"
-            value={page.type}
-            onChange={(e) => updatePage({ type: e.target.value as PageType })}
-            className={meta}
-          >
-            {PAGE_TYPES.map((t) => (
-              <option key={t}>{t}</option>
-            ))}
-          </select>
-          <button
-            onClick={deletePage}
-            className={`h-9 rounded-lg px-2 text-sm ${confirmDelete ? 'bg-red-600 font-medium text-white' : 'text-neutral-400 hover:text-red-600'}`}
-          >
-            {confirmDelete ? 'Tap again to delete' : 'Delete'}
-          </button>
-        </div>
+        <button
+          onClick={deletePage}
+          className={`h-9 rounded-lg px-2 text-sm ${confirmDelete ? 'bg-red-600 font-medium text-white' : 'text-neutral-400 hover:text-red-600'}`}
+        >
+          {confirmDelete ? 'Tap again to delete' : 'Delete'}
+        </button>
       </header>
 
       {/* Action items dropdown. Add new ones with the + button. */}
