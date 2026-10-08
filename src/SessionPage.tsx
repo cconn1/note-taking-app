@@ -83,25 +83,30 @@ export default function SessionPage() {
           onChange={(e) => e.target.value && updatePage({ date: e.target.value })}
           className={meta}
         />
-        <input
-          key={page.title}
-          defaultValue={page.title}
-          aria-label="Session title"
-          placeholder="Untitled"
-          onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
-          onBlur={(e) => e.target.value !== page.title && updatePage({ title: e.target.value.trim() })}
-          className="min-w-0 flex-1 basis-48 rounded-lg border border-transparent bg-transparent px-1.5 py-1 text-xl font-semibold tracking-tight outline-none hover:border-neutral-200 focus:border-accent dark:hover:border-neutral-800"
-        />
-        <select
-          aria-label="Type"
-          value={page.type}
-          onChange={(e) => updatePage({ type: e.target.value as PageType })}
-          className={meta}
-        >
-          {PAGE_TYPES.map((t) => (
-            <option key={t}>{t}</option>
-          ))}
-        </select>
+        <div className="flex min-w-0 flex-1 basis-48 items-center">
+          <input
+            key={page.title}
+            // Width follows the text (field-sizing where supported; size= as the fallback),
+            // so the type sits right after the name instead of at the far right.
+            size={Math.max(page.title.length, 8)}
+            defaultValue={page.title}
+            aria-label="Session title"
+            placeholder="Untitled"
+            onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+            onBlur={(e) => e.target.value !== page.title && updatePage({ title: e.target.value.trim() })}
+            className="max-w-full min-w-0 rounded-lg border border-transparent bg-transparent px-1.5 py-1 text-xl font-semibold tracking-tight outline-none field-sizing-content hover:border-neutral-200 focus:border-accent dark:hover:border-neutral-800"
+          />
+          <select
+            aria-label="Type"
+            value={page.type}
+            onChange={(e) => updatePage({ type: e.target.value as PageType })}
+            className={`${meta} shrink-0`}
+          >
+            {PAGE_TYPES.map((t) => (
+              <option key={t}>{t}</option>
+            ))}
+          </select>
+        </div>
         <button
           onClick={deletePage}
           className={`h-9 rounded-lg px-2 text-sm ${confirmDelete ? 'bg-red-600 font-medium text-white' : 'text-neutral-400 hover:text-red-600'}`}
