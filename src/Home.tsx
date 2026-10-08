@@ -71,14 +71,20 @@ export default function Home() {
         {/* To Do */}
         <section>
           <h2 className={`${heading} mb-2`}>To Do</h2>
-          <form onSubmit={addInbox}>
+          <form onSubmit={addInbox} className="flex gap-2">
             <input
               value={newTask}
               onChange={(e) => setNewTask(e.target.value)}
-              placeholder="Add to Inbox and press Enter"
+              placeholder="Add to Inbox"
               enterKeyHint="done"
-              className="h-12 w-full rounded-lg border border-neutral-200 bg-transparent px-4 text-base outline-none focus:border-accent focus:ring-2 focus:ring-accent/30 dark:border-neutral-800"
+              className="h-12 min-w-0 flex-1 rounded-lg border border-neutral-200 bg-transparent px-4 text-base outline-none focus:border-accent focus:ring-2 focus:ring-accent/30 dark:border-neutral-800"
             />
+            <button
+              disabled={!newTask.trim()}
+              className="h-12 shrink-0 rounded-lg bg-accent px-5 font-medium text-white hover:bg-accent-hover disabled:opacity-40"
+            >
+              Add
+            </button>
           </form>
 
           {tasks && open.length === 0 && (

@@ -126,14 +126,20 @@ export default function SessionPage() {
 
       <section>
         <h2 className="mb-2 text-sm font-semibold tracking-wide text-neutral-500 uppercase">Action Items</h2>
-        <form onSubmit={addTask}>
+        <form onSubmit={addTask} className="flex gap-2">
           <input
             value={newTask}
             onChange={(e) => setNewTask(e.target.value)}
-            placeholder="Add an action item and press Enter"
+            placeholder="Add an action item"
             enterKeyHint="done"
-            className="h-12 w-full rounded-lg border border-neutral-200 bg-transparent px-4 text-base outline-none focus:border-accent focus:ring-2 focus:ring-accent/30 dark:border-neutral-800"
+            className="h-12 min-w-0 flex-1 rounded-lg border border-neutral-200 bg-transparent px-4 text-base outline-none focus:border-accent focus:ring-2 focus:ring-accent/30 dark:border-neutral-800"
           />
+          <button
+            disabled={!newTask.trim()}
+            className="h-12 shrink-0 rounded-lg bg-accent px-5 font-medium text-white hover:bg-accent-hover disabled:opacity-40"
+          >
+            Add
+          </button>
         </form>
         <ul className="mt-2">
           {open.map((t) => (
