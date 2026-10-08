@@ -59,4 +59,21 @@ npm run dev                  # http://localhost:5173
 
 ## Deployment
 
-GitHub Pages via GitHub Actions. Coming in Phase 5.
+Live at **https://cconn1.github.io/note-taking-app/**. Every push to `main` runs [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml): install → lint → self-check → build → publish to GitHub Pages.
+
+One-time GitHub setup:
+
+1. The repo must be **public** (Pages on a free account). Only code is public; your data lives in Supabase.
+2. **Settings → Pages → Build and deployment → Source: GitHub Actions.**
+3. **Settings → Secrets and variables → Actions → New repository secret**, twice, with the same values as `.env.local`:
+   - `VITE_SUPABASE_URL`
+   - `VITE_SUPABASE_ANON_KEY`
+
+To redeploy without a code change: Actions tab → Deploy to GitHub Pages → Run workflow.
+
+### Install it as an app
+
+- **iPad / iPhone (Safari):** open the site → Share → **Add to Home Screen**.
+- **Windows / Mac (Chrome or Edge):** open the site → the install icon in the address bar (or menu → Install Lists).
+
+The installed app opens instantly from cache, but needs a connection to load or save data. A new deploy shows up the next time you open the app.

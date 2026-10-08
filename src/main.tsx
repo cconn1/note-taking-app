@@ -21,3 +21,8 @@ if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KE
     ),
   )
 }
+
+// Installable app + instant startup. Production only, so local dev always serves fresh files.
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js')
+}
