@@ -41,7 +41,7 @@ cp .env.example .env.local   # then fill in the URL and key from step 3
 npm run dev                  # http://localhost:5173
 ```
 
-`.env.local` is gitignored. Other scripts: `npm run build`, `npm run preview`, `npm run lint`.
+`.env.local` is gitignored. Other scripts: `npm run build`, `npm run preview`, `npm run lint`, `npm run check` (date-logic self-check).
 
 ## Deployment
 

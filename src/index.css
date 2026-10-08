@@ -5,6 +5,14 @@
   /* The one accent color. Change it here. */
   --color-accent: var(--color-indigo-600);
   --color-accent-hover: var(--color-indigo-700);
+  --color-accent-text: var(--color-indigo-600);
+}
+
+/* Lighter accent for text on dark backgrounds. */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-accent-text: var(--color-indigo-400);
+  }
 }
 
 :root {
