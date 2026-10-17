@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { NavLink, Outlet, useLocation, useMatch, useNavigate } from 'react-router'
 import { refresh, showError, useLoad, type Toast } from './lib/app'
-import { ListsContext, readListTab, type List } from './lib/lists'
+import { LIST_COLORS, ListsContext, readListTab, type List } from './lib/lists'
 import { supabase } from './lib/supabase'
 
 const NAV = [
@@ -16,6 +16,9 @@ const SidebarIcon = () => (
     <path d="M7.5 3.5v13" />
   </svg>
 )
+
+// How far (px) to pull down before letting go refreshes.
+const PULL = 70
 
 const isTyping = (el: EventTarget | null) =>
   el instanceof HTMLElement && (el.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName))
@@ -39,11 +42,58 @@ export default function Layout({ email }: { email?: string }) {
   const [lists, setLists] = useState<List[]>([])
 
   const loadLists = useCallback(async () => {
-    const { data, error } = await supabase.from('lists').select('id, name').order('created_at')
+    const { data, error } = await supabase.from('lists').select('id, name, color').order('created_at')
     if (error) return showError(`Couldn't load lists: ${error.message}`)
-    setLists(data)
+    // A picked color wins; otherwise colors go by creation order (so adding a list doesn't reshuffle them). Display is A–Z.
+    setLists(
+      data
+        .map((l, i) => ({ ...l, color: l.color ?? LIST_COLORS[i % LIST_COLORS.length] }))
+        .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })),
+    )
   }, [])
   useLoad(loadLists)
+
+  // Pull down from the top to refresh (fingers only; the installed app has no browser pull-to-refresh).
+  const [pull, setPull] = useState(0)
+  useEffect(() => {
+    let start: { x: number; y: number } | null = null
+    let dist = 0
+    const onStart = (e: TouchEvent) => {
+      const t = e.touches[0] as Touch & { touchType?: string }
+      // Not for the Pencil, the ink canvas in finger-draw mode, or a touch that starts below the top of the page.
+      start =
+        e.touches.length === 1 && window.scrollY <= 0 && t.touchType !== 'stylus' && getComputedStyle(e.target as Element).touchAction !== 'none'
+          ? { x: t.clientX, y: t.clientY }
+          : null
+      dist = 0
+    }
+    const onMove = (e: TouchEvent) => {
+      if (!start) return
+      const dy = e.touches[0].clientY - start.y
+      const dx = Math.abs(e.touches[0].clientX - start.x)
+      if (window.scrollY > 0 || dy < 0 || dx > dy) {
+        start = null
+        return setPull(0)
+      }
+      dist = Math.min(dy / 2, PULL * 1.3) // half speed, like the native rubber band
+      setPull(dist)
+    }
+    const onEnd = () => {
+      if (start && dist >= PULL) refresh()
+      start = null
+      setPull(0)
+    }
+    window.addEventListener('touchstart', onStart, { passive: true })
+    window.addEventListener('touchmove', onMove, { passive: true })
+    window.addEventListener('touchend', onEnd)
+    window.addEventListener('touchcancel', onEnd)
+    return () => {
+      window.removeEventListener('touchstart', onStart)
+      window.removeEventListener('touchmove', onMove)
+      window.removeEventListener('touchend', onEnd)
+      window.removeEventListener('touchcancel', onEnd)
+    }
+  }, [])
 
   const openQuickAdd = useCallback(() => {
     // Default to the list tab last picked on Home.
@@ -104,6 +154,15 @@ export default function Layout({ email }: { email?: string }) {
   return (
     <ListsContext.Provider value={lists}>
       <div className="min-h-dvh md:flex">
+        {pull > 0 && (
+          <div
+            aria-hidden
+            style={{ transform: `translateY(${pull}px) rotate(${pull * 4}deg)`, opacity: Math.min(1, pull / PULL) }}
+            className={`fixed top-[env(safe-area-inset-top)] left-1/2 z-50 -mt-8 -ml-4 grid size-8 place-items-center rounded-full bg-white text-lg shadow-md dark:bg-neutral-800 ${pull >= PULL ? 'text-accent-text' : 'text-neutral-400'}`}
+          >
+            ↻
+          </div>
+        )}
         {/* iPad / desktop */}
         <nav
           className={`sticky top-0 hidden h-dvh w-52 shrink-0 flex-col gap-1 border-r border-neutral-200 p-3 dark:border-neutral-800 ${sidebarOpen ? 'md:flex' : ''}`}

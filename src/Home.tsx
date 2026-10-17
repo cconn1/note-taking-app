@@ -3,7 +3,7 @@ import { Link } from 'react-router'
 import { NewSession } from './Sessions'
 import TaskItem from './TaskItem'
 import { refresh, showError, useLoad } from './lib/app'
-import { LIST_TAB_KEY, readListTab, useLists } from './lib/lists'
+import { LIST_COLORS, LIST_TAB_KEY, readListTab, useLists } from './lib/lists'
 import { byDue, DUE_GROUPS, dueGroup, formatDate, longDate, today } from './lib/dates'
 import { supabase, type Page, type Task, type TaskWithPage } from './lib/supabase'
 
@@ -70,6 +70,13 @@ export default function Home() {
     refresh()
   }
 
+  async function recolorList(color: string) {
+    if (!activeList) return
+    const { error } = await supabase.from('lists').update({ color }).eq('id', activeList.id)
+    if (error) return showError(`Couldn't change color: ${error.message}`)
+    refresh()
+  }
+
   async function deleteList() {
     if (!activeList) return
     if (!confirmDelete) {
@@ -98,7 +105,10 @@ export default function Home() {
       <header className="mb-8 flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-sm text-neutral-500">Today</p>
-          <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">{longDate(now)}</h1>
+          <div className="flex flex-wrap items-baseline gap-x-3">
+            <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">{longDate(now)}</h1>
+            <span className="text-xl font-bold tracking-[0.2em] text-accent-text uppercase md:text-2xl">Sitrep</span>
+          </div>
         </div>
         {!creating && (
           <button
@@ -122,11 +132,21 @@ export default function Home() {
             <button onClick={() => pickTab('all')} aria-pressed={!activeList} className={chip(!activeList)}>
               All
             </button>
-            {lists.map((l) => (
-              <button key={l.id} onClick={() => pickTab(l.id)} aria-pressed={activeList?.id === l.id} className={chip(activeList?.id === l.id)}>
-                {l.name}
-              </button>
-            ))}
+            {lists.map((l) => {
+              const on = activeList?.id === l.id
+              return (
+                <button
+                  key={l.id}
+                  onClick={() => pickTab(l.id)}
+                  aria-pressed={on}
+                  style={{ backgroundColor: l.color }}
+                  // Every tab wears its list's color; the selected one is full strength with a ring.
+                  className={`h-9 rounded-full px-3.5 text-sm font-medium text-white ${on ? 'ring-2 ring-neutral-800 ring-offset-2 dark:ring-neutral-200 ring-offset-white dark:ring-offset-neutral-950' : 'opacity-60 hover:opacity-85'}`}
+                >
+                  {l.name}
+                </button>
+              )
+            })}
             {adding ? (
               <form onSubmit={createList}>
                 <input
@@ -165,6 +185,24 @@ export default function Home() {
               <button type="button" onClick={() => setEditing(false)} className="h-9 px-2 text-sm text-neutral-500">
                 Cancel
               </button>
+              {/* Tap a swatch to recolor the list right away. */}
+              <div className="flex basis-full flex-wrap gap-1">
+                {LIST_COLORS.map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => recolorList(c)}
+                    aria-label={`Color ${c}`}
+                    aria-pressed={activeList.color === c}
+                    className="grid size-11 place-items-center"
+                  >
+                    <span
+                      style={{ backgroundColor: c }}
+                      className={`size-7 rounded-full ${activeList.color === c ? 'ring-2 ring-neutral-800 ring-offset-2 ring-offset-white dark:ring-neutral-200 dark:ring-offset-neutral-950' : ''}`}
+                    />
+                  </button>
+                ))}
+              </div>
             </form>
           )}
 

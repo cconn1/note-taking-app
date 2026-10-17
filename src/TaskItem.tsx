@@ -7,6 +7,9 @@ import { supabase, type Task } from './lib/supabase'
 
 // Faint on touch screens, hidden until hover with a mouse.
 const subtle = 'opacity-50 pointer-fine:opacity-0 pointer-fine:group-hover:opacity-100 focus-within:opacity-100 focus:opacity-100'
+// Swipe left past THRESHOLD and the row snaps open to OPEN, showing the Delete button.
+const OPEN = -88
+const THRESHOLD = 40
 
 export default function TaskItem({
   task,
@@ -23,10 +26,11 @@ export default function TaskItem({
   const [checked, setChecked] = useState(!!task.completed_at)
   const lists = useLists()
   const list = lists.find((l) => l.id === task.list_id)
-  // Swipe left to delete (finger only; the Pencil writes and the mouse has the × button).
+  // Swipe left to reveal Delete (finger only; the Pencil writes and the mouse has the × button).
   const [dx, setDx] = useState(0)
   const [dragging, setDragging] = useState(false)
-  const swipe = useRef<{ id: number; x: number; y: number; active: boolean } | null>(null)
+  const open = !dragging && dx === OPEN
+  const swipe = useRef<{ id: number; x: number; y: number; base: number; active: boolean } | null>(null)
 
   async function update(patch: Partial<Task>, delay = 0) {
     const { data, error } = await supabase.from('tasks').update(patch).eq('id', task.id).select().single()
@@ -63,7 +67,7 @@ export default function TaskItem({
   }
 
   function onPointerDown(e: PointerEvent<HTMLLIElement>) {
-    if (e.pointerType === 'touch') swipe.current = { id: e.pointerId, x: e.clientX, y: e.clientY, active: false }
+    if (e.pointerType === 'touch') swipe.current = { id: e.pointerId, x: e.clientX, y: e.clientY, base: dx, active: false }
   }
 
   function onPointerMove(e: PointerEvent<HTMLLIElement>) {
@@ -71,15 +75,15 @@ export default function TaskItem({
     if (!s || e.pointerId !== s.id) return
     const mx = e.clientX - s.x
     if (!s.active) {
-      // Decide once: mostly vertical = the page scrolls; leftward = swipe.
+      // Decide once: mostly vertical = the page scrolls; leftward (or rightward when open) = swipe.
       if (Math.abs(e.clientY - s.y) > 10) swipe.current = null
-      else if (mx < -10) {
+      else if (mx < -10 || (s.base && mx > 10)) {
         s.active = true
         setDragging(true) // touch pointers are implicitly captured, so moves keep arriving here
       }
       return
     }
-    setDx(Math.min(0, mx))
+    setDx(Math.max(OPEN - 24, Math.min(0, s.base + mx)))
   }
 
   function onPointerEnd(e: PointerEvent<HTMLLIElement>) {
@@ -87,12 +91,9 @@ export default function TaskItem({
     swipe.current = null
     if (!s?.active) return
     setDragging(false)
-    const width = e.currentTarget.offsetWidth
     // Measure from the release point, not the last rendered dx, so a fast flick still counts.
-    if (e.type === 'pointerup' && e.clientX - s.x < -width * 0.35) {
-      setDx(-width) // slide the rest of the way out, then delete
-      setTimeout(remove, 200)
-    } else setDx(0)
+    const mx = e.clientX - s.x
+    setDx(e.type === 'pointerup' && (s.base ? mx < THRESHOLD : mx < -THRESHOLD) ? OPEN : 0)
   }
 
   const overdue = !checked && task.due_date && task.due_date < today()
@@ -106,14 +107,23 @@ export default function TaskItem({
       className="relative touch-pan-y overflow-hidden"
     >
       {dx < 0 && (
-        <div
+        <button
+          onClick={remove}
+          disabled={!open}
           style={{ width: -dx }}
           className={`absolute inset-y-0 right-0 flex items-center justify-end overflow-hidden rounded-lg bg-red-600 pr-4 text-sm font-medium text-white ${dragging ? '' : 'transition-[width] duration-200'}`}
         >
           Delete
-        </div>
+        </button>
       )}
       <div
+        // While open, a tap anywhere on the row just closes it.
+        onClickCapture={(e) => {
+          if (!open) return
+          e.preventDefault()
+          e.stopPropagation()
+          setDx(0)
+        }}
         style={{ transform: `translateX(${dx}px)` }}
         className={`group flex items-start gap-1 sm:items-center ${dragging ? '' : 'transition-[transform,opacity] duration-200'} ${checked !== !!task.completed_at ? 'opacity-40' : ''}`}
       >
@@ -169,8 +179,9 @@ export default function TaskItem({
             {lists.length > 0 && (
               <label
                 className={`relative flex h-7 max-w-28 shrink-0 cursor-pointer sm:h-8 items-center rounded-full px-2.5 text-xs font-medium ${
-                  list ? 'bg-tan/25 text-neutral-700 dark:bg-tan/15 dark:text-tan' : `text-neutral-400 ${subtle}`
+                  list ? 'text-white' : `text-neutral-400 ${subtle}`
                 }`}
+                style={list && { backgroundColor: list.color }}
               >
                 <span className="truncate">{list ? list.name : '+ List'}</span>
                 <select

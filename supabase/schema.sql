@@ -49,6 +49,7 @@ create table public.lists (
   id         uuid primary key default gen_random_uuid(),
   user_id    uuid not null default auth.uid() references auth.users on delete cascade,
   name       text not null check (length(btrim(name)) between 1 and 40),
+  color      text check (color ~ '^#[0-9a-f]{6}$'),  -- null = automatic (by creation order)
   created_at timestamptz not null default now(),
   unique (id, user_id),
   unique (user_id, name)
