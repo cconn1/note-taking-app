@@ -24,6 +24,7 @@ export type Task = {
   id: string
   page_id: string | null // null = not from a session
   list_id: string | null // Managers, School, ... (optional)
+  parent_id: string | null // set = a subtask (one level deep; deleted with its parent)
   text: string
   due_date: string | null
   sort_order: number

@@ -72,20 +72,20 @@ export default function Search() {
         placeholder="Search sessions, notes and tasks"
         value={q}
         onChange={(e) => setQ(e.target.value)}
-        className="h-12 w-full rounded-lg border border-neutral-300 bg-transparent px-4 text-base outline-none focus:border-accent focus:ring-2 focus:ring-accent/30 dark:border-neutral-700"
+        className="h-12 w-full rounded-xl bg-surface px-4 text-base shadow-sm outline-none focus:ring-2 focus:ring-accent/40"
       />
 
       {shown && shown.pages.length + shown.tasks.length === 0 && (
-        <p className="py-12 text-center text-neutral-500">Nothing matches “{shown.q}”.</p>
+        <p className="surface mt-6 py-12 text-center text-neutral-500">Nothing matches “{shown.q}”.</p>
       )}
 
       {shown && shown.pages.length > 0 && (
         <section className="mt-8">
-          <h2 className="mb-2 text-sm font-semibold tracking-wide text-neutral-500 uppercase">Sessions</h2>
-          <ul className="divide-y divide-neutral-200 dark:divide-neutral-800">
+          <h2 className="section-label mb-2 px-1">Sessions</h2>
+          <ul className="surface divide-y divide-separator overflow-hidden">
             {shown.pages.map((p) => (
               <li key={p.id}>
-                <Link to={`/sessions/${p.id}`} className="-mx-3 block rounded-lg px-3 py-3 hover:bg-neutral-50 dark:hover:bg-neutral-900">
+                <Link to={`/sessions/${p.id}`} className="block px-4 py-3 hover:bg-black/3 active:bg-black/6 dark:hover:bg-white/5 dark:active:bg-white/8">
                   <span className="font-medium">{p.title || 'Untitled'}</span>
                   <span className="ml-2 text-sm text-neutral-500">
                     {formatDate(p.date)} · {p.type}
@@ -100,8 +100,8 @@ export default function Search() {
 
       {shown && shown.tasks.length > 0 && (
         <section className="mt-8">
-          <h2 className="mb-2 text-sm font-semibold tracking-wide text-neutral-500 uppercase">Tasks</h2>
-          <ul>
+          <h2 className="section-label mb-2 px-1">Tasks</h2>
+          <ul className="surface divide-y divide-separator overflow-hidden px-1">
             {shown.tasks.map((t) => (
               <TaskItem key={t.id} task={t} source={t.pages} onChange={replace} onDelete={drop} />
             ))}

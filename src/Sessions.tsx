@@ -25,11 +25,11 @@ export default function Sessions() {
   return (
     <div className="mx-auto max-w-3xl px-4 py-6 md:px-8 md:py-10">
       <header className="mb-6 flex items-center justify-between gap-4">
-        <h1 className="text-2xl font-semibold tracking-tight">Sessions</h1>
+        <h1 className="large-title">Sessions</h1>
         {!creating && (
           <button
             onClick={() => setCreating(true)}
-            className="h-11 rounded-lg bg-accent px-4 font-medium text-white hover:bg-accent-hover"
+            className="press h-11 rounded-full bg-accent px-5 font-semibold text-white shadow-md hover:bg-accent-hover"
           >
             + New Session
           </button>
@@ -44,21 +44,21 @@ export default function Sessions() {
         placeholder="Filter by title or type"
         value={filter}
         onChange={(e) => setFilter(e.target.value)}
-        className="mb-4 h-11 w-full rounded-lg border border-neutral-200 bg-transparent px-4 text-base outline-none focus:border-accent focus:ring-2 focus:ring-accent/30 dark:border-neutral-800"
+        className="mb-4 h-11 w-full rounded-xl bg-surface px-4 text-base shadow-sm outline-none focus:ring-2 focus:ring-accent/40"
       />
 
       {pages?.length === 0 && !creating && (
-        <p className="py-16 text-center text-neutral-500">No sessions yet. Start your first one.</p>
+        <p className="surface py-16 text-center text-neutral-500">No sessions yet. Start your first one.</p>
       )}
 
-      <ul className="divide-y divide-neutral-200 dark:divide-neutral-800">
+      <ul className="surface divide-y divide-separator overflow-hidden empty:hidden">
         {pages
           ?.filter((p) => `${p.title} ${p.type}`.toLowerCase().includes(filter.trim().toLowerCase()))
           .map((p) => (
           <li key={p.id}>
             <Link
               to={`/sessions/${p.id}`}
-              className="-mx-3 flex min-h-14 flex-col justify-center rounded-lg px-3 py-2 hover:bg-neutral-50 dark:hover:bg-neutral-900"
+              className="flex min-h-14 flex-col justify-center px-4 py-2.5 hover:bg-black/3 active:bg-black/6 dark:hover:bg-white/5 dark:active:bg-white/8"
             >
               <span className="font-medium">{p.title || 'Untitled'}</span>
               <span className="text-sm text-neutral-500">
@@ -73,7 +73,7 @@ export default function Sessions() {
 }
 
 const field =
-  'h-11 rounded-lg border border-neutral-300 bg-transparent px-3 text-base outline-none focus:border-accent focus:ring-2 focus:ring-accent/30 dark:border-neutral-700'
+  'h-11 rounded-xl bg-black/5 px-3 text-base outline-none focus:ring-2 focus:ring-accent/40 dark:bg-white/8'
 
 export function NewSession({ onCancel }: { onCancel: () => void }) {
   const navigate = useNavigate()
@@ -96,7 +96,7 @@ export function NewSession({ onCancel }: { onCancel: () => void }) {
   }
 
   return (
-    <form onSubmit={create} className="mb-6 flex flex-col gap-3 rounded-xl border border-neutral-200 p-4 dark:border-neutral-800">
+    <form onSubmit={create} className="surface mb-6 flex flex-col gap-3 p-4">
       <input
         autoFocus
         placeholder={`Title (defaults to "${type}")`}
@@ -115,11 +115,11 @@ export function NewSession({ onCancel }: { onCancel: () => void }) {
       <div className="flex gap-3">
         <button
           disabled={busy}
-          className="h-11 rounded-lg bg-accent px-4 font-medium text-white hover:bg-accent-hover disabled:opacity-50"
+          className="press h-11 rounded-full bg-accent px-5 font-semibold text-white hover:bg-accent-hover disabled:opacity-50"
         >
           Create
         </button>
-        <button type="button" onClick={onCancel} className="h-11 px-4 text-neutral-600 dark:text-neutral-400">
+        <button type="button" onClick={onCancel} className="press h-11 rounded-full px-4 font-medium text-neutral-600 dark:text-neutral-400">
           Cancel
         </button>
       </div>

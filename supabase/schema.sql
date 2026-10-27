@@ -66,6 +66,30 @@ create index on public.pages (user_id, date desc);
 create index on public.tasks (user_id, completed_at, due_date);
 create index on public.tasks (page_id);
 
+-- Subtasks: one level deep, deleted with their parent. Only your own tasks can be a parent.
+alter table public.tasks
+  add unique (id, user_id),
+  add column parent_id uuid,
+  add foreign key (parent_id, user_id) references public.tasks (id, user_id) on delete cascade;
+create index on public.tasks (parent_id);
+
+create or replace function public.check_subtask_depth() returns trigger
+language plpgsql set search_path = '' as $fn$
+begin
+  if new.parent_id is not null and (
+    new.parent_id = new.id
+    or exists (select 1 from public.tasks where id = new.parent_id and parent_id is not null)
+    or exists (select 1 from public.tasks where parent_id = new.id)
+  ) then
+    raise exception 'Subtasks can only be one level deep';
+  end if;
+  return new;
+end
+$fn$;
+
+create trigger subtask_depth before insert or update of parent_id on public.tasks
+  for each row execute function public.check_subtask_depth();
+
 alter table public.pages enable row level security;
 alter table public.tasks enable row level security;
 alter table public.lists enable row level security;
