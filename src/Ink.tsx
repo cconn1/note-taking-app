@@ -87,7 +87,7 @@ export default function Ink({ strokes, onChange }: { strokes: Stroke[]; onChange
   function toPoint(e: PointerEvent): Point {
     const r = svg.current!.getBoundingClientRect()
     const k = INK_WIDTH / r.width
-    return [(e.clientX - r.left) * k, (e.clientY - r.top) * k, e.pointerType === 'pen' && e.pressure ? e.pressure : 0.5]
+    return [(e.clientX - r.left) * k, (e.clientY - r.top) * k, 0.5]
   }
 
   function record(action: Action) {

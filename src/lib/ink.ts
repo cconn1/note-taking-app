@@ -62,14 +62,12 @@ export const inkHeight = (strokes: Stroke[]) =>
 // SVG path for a stroke's outline. perfect-freehand turns the points into a pressure-shaped
 // outline at draw time, so only the raw points are stored.
 export function outlinePath(points: Point[], tool: Tool, size: number, last = true) {
-  // Mice and fingers report a flat 0.5; let perfect-freehand fake pressure from speed instead.
-  const simulatePressure = points.every((p) => p[2] === 0.5)
   const outline = getStroke(points, {
     size,
     thinning: tool === 'highlighter' ? 0 : 0.6,
     smoothing: 0.5,
     streamline: 0.4,
-    simulatePressure,
+    simulatePressure: true, // Pencil draws like a finger: width from speed, not pressure
     last,
   })
   if (!outline.length) return ''
