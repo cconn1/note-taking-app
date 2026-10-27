@@ -1,15 +1,15 @@
-import { useCallback, useState, type FormEvent } from 'react'
+import { useCallback, useState, type CSSProperties, type FormEvent } from 'react'
 import { Link } from 'react-router'
 import { NewSession } from './Sessions'
 import TaskItem from './TaskItem'
-import { refresh, showError, useLoad } from './lib/app'
+import { refresh, showError, showToast, useLoad } from './lib/app'
 import { LIST_COLORS, LIST_TAB_KEY, readListTab, useLists } from './lib/lists'
 import { byDue, DUE_GROUPS, dueGroup, formatDate, longDate, today } from './lib/dates'
 import { supabase, type Page, type Task, type TaskWithPage } from './lib/supabase'
 
 type Recent = Pick<Page, 'id' | 'title' | 'date' | 'type'>
 
-const heading = 'text-sm font-semibold tracking-wide text-neutral-500 uppercase'
+const heading = 'section-label px-1'
 
 export default function Home() {
   const [tasks, setTasks] = useState<TaskWithPage[]>()
@@ -20,11 +20,12 @@ export default function Home() {
   const [tab, setTab] = useState(readListTab)
   const [adding, setAdding] = useState(false)
   const [editing, setEditing] = useState(false)
-  const [confirmDelete, setConfirmDelete] = useState(false)
 
   const load = useCallback(async () => {
     const [t, p] = await Promise.all([
-      supabase.from('tasks').select('*, pages(id, title)').is('completed_at', null),
+      // Open tasks, plus every subtask (done ones too, for the 2/3 count).
+      // ponytail: loads done subtasks of done parents too; filter by parent if that list grows large.
+      supabase.from('tasks').select('*, pages(id, title)').or('completed_at.is.null,parent_id.not.is.null'),
       supabase.from('pages').select('id, title, date, type').order('updated_at', { ascending: false }).limit(6),
     ])
     if (t.error || p.error) return showError(`Couldn't load: ${(t.error ?? p.error)!.message}`)
@@ -35,7 +36,8 @@ export default function Home() {
 
   // Merge so the joined session survives an update (TaskItem returns the bare row).
   const replace = (t: Task) => setTasks((ts) => ts?.map((x) => (x.id === t.id ? { ...x, ...t } : x)))
-  const drop = (id: string) => setTasks((ts) => ts?.filter((x) => x.id !== id))
+  // Deleting a parent deletes its subtasks too.
+  const drop = (id: string) => setTasks((ts) => ts?.filter((x) => x.id !== id && x.parent_id !== id))
 
   const activeList = lists.find((l) => l.id === tab) // undefined = All (or a deleted list)
 
@@ -79,41 +81,58 @@ export default function Home() {
 
   async function deleteList() {
     if (!activeList) return
-    if (!confirmDelete) {
-      setConfirmDelete(true)
-      setTimeout(() => setConfirmDelete(false), 3000)
-      return
-    }
-    // Its tasks stay; they just lose the label (foreign key: on delete set null).
-    const { error } = await supabase.from('lists').delete().eq('id', activeList.id)
+    // Its tasks stay; they just lose the label (foreign key: on delete set null). Remember which
+    // ones (done ones too) so Undo can put them back.
+    const t = await supabase.from('tasks').select('id').eq('list_id', activeList.id)
+    if (t.error) return showError(`Couldn't delete list: ${t.error.message}`)
+    // The deleted row comes back whole (raw color, created_at), so Undo restores it exactly.
+    const { data: row, error } = await supabase.from('lists').delete().eq('id', activeList.id).select().single()
     if (error) return showError(`Couldn't delete list: ${error.message}`)
     pickTab('all')
     refresh()
+    const ids = t.data.map((x) => x.id)
+    showToast({
+      message: `Deleted "${row.name}"`,
+      undo: async () => {
+        const { error } = await supabase.from('lists').insert(row)
+        if (error) return showError(`Couldn't restore list: ${error.message}`)
+        if (ids.length) {
+          const { error } = await supabase.from('tasks').update({ list_id: row.id }).in('id', ids)
+          if (error) showError(`Couldn't restore the list's tasks: ${error.message}`)
+        }
+        pickTab(row.id)
+        refresh()
+      },
+    })
   }
 
   const now = today()
-  const open = (tasks ?? []).filter((t) => !t.completed_at).sort(byDue)
+  const open = (tasks ?? []).filter((t) => !t.completed_at && !t.parent_id).sort(byDue)
+  const subtasksOf = (id: string) => (tasks ?? []).filter((t) => t.parent_id === id).sort((a, b) => a.sort_order - b.sort_order)
   const openCount = (pageId: string) => open.filter((t) => t.page_id === pageId).length
   const shown = activeList ? open.filter((t) => t.list_id === activeList.id) : open
-  const chip = (on: boolean) =>
-    `h-9 rounded-full px-3.5 text-sm font-medium ${on ? 'bg-accent text-white' : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200 dark:bg-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-800'}`
+  // List tabs: a faint tint of the list color with the color as text (lightened in dark mode, where
+  // the dark field colors would vanish on black); the selected tab is solid with white text.
+  // All list colors are dark, so both clear ~4.5:1.
+  const tabClass = (on: boolean) =>
+    `press h-9 rounded-full px-4 text-sm font-semibold ${on ? 'bg-(--c) text-white shadow-sm' : 'bg-[color-mix(in_srgb,var(--c)_18%,transparent)] text-(--c) hover:bg-[color-mix(in_srgb,var(--c)_26%,transparent)] dark:bg-[color-mix(in_srgb,var(--c)_35%,transparent)] dark:text-[color-mix(in_srgb,var(--c)_45%,white)]'}`
+  const tint = (c: string) => ({ '--c': c }) as CSSProperties
   const small =
-    'h-9 rounded-lg border border-neutral-300 bg-transparent px-3 text-sm outline-none focus:border-accent dark:border-neutral-700'
+    'h-9 rounded-full bg-surface px-4 text-sm shadow-sm outline-none focus:ring-2 focus:ring-accent/40'
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-6 md:px-8 md:py-10">
       <header className="mb-8 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="text-sm text-neutral-500">Today</p>
-          <div className="flex flex-wrap items-baseline gap-x-3">
-            <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">{longDate(now)}</h1>
-            <span className="text-xl font-bold tracking-[0.2em] text-accent-text uppercase md:text-2xl">Sitrep</span>
-          </div>
+          {/* The sidebar already says SITREP on md+. */}
+          <p className="mb-1 text-sm font-bold tracking-[0.2em] text-accent-text uppercase md:hidden">Sitrep</p>
+          <h1 className="large-title">{longDate(now)}</h1>
         </div>
         {!creating && (
           <button
             onClick={() => setCreating(true)}
-            className="h-12 rounded-lg bg-accent px-5 font-medium text-white shadow-sm hover:bg-accent-hover"
+            // Secondary: adding a task is this screen's primary action.
+            className="press h-12 rounded-full bg-accent/12 px-6 font-semibold text-accent-text hover:bg-accent/18"
           >
             + New Session
           </button>
@@ -129,7 +148,7 @@ export default function Home() {
 
           {/* List tabs */}
           <div className="mb-2 flex flex-wrap items-center gap-1.5">
-            <button onClick={() => pickTab('all')} aria-pressed={!activeList} className={chip(!activeList)}>
+            <button onClick={() => pickTab('all')} aria-pressed={!activeList} style={tint('var(--color-accent)')} className={tabClass(!activeList)}>
               All
             </button>
             {lists.map((l) => {
@@ -139,9 +158,8 @@ export default function Home() {
                   key={l.id}
                   onClick={() => pickTab(l.id)}
                   aria-pressed={on}
-                  style={{ backgroundColor: l.color }}
-                  // Every tab wears its list's color; the selected one is full strength with a ring.
-                  className={`h-9 rounded-full px-3.5 text-sm font-medium text-white ${on ? 'ring-2 ring-neutral-800 ring-offset-2 dark:ring-neutral-200 ring-offset-white dark:ring-offset-neutral-950' : 'opacity-60 hover:opacity-85'}`}
+                  style={tint(l.color)}
+                  className={tabClass(on)}
                 >
                   {l.name}
                 </button>
@@ -160,12 +178,12 @@ export default function Home() {
                 />
               </form>
             ) : (
-              <button onClick={() => setAdding(true)} aria-label="New list" className={chip(false)}>
+              <button onClick={() => setAdding(true)} aria-label="New list" className="press h-9 rounded-full bg-surface px-4 text-sm font-semibold text-neutral-700 shadow-sm dark:text-neutral-300">
                 +
               </button>
             )}
             {activeList && !editing && (
-              <button onClick={() => setEditing(true)} className="h-9 px-2 text-sm text-neutral-500 hover:underline">
+              <button onClick={() => setEditing(true)} className="press h-9 rounded-full px-3 text-sm font-medium text-accent-text">
                 Edit
               </button>
             )}
@@ -174,15 +192,15 @@ export default function Home() {
           {editing && activeList && (
             <form key={activeList.id} onSubmit={renameList} className="mb-2 flex flex-wrap items-center gap-2">
               <input name="name" defaultValue={activeList.name} maxLength={40} aria-label="List name" className={`${small} w-44`} />
-              <button className="h-9 rounded-lg bg-accent px-3 text-sm font-medium text-white hover:bg-accent-hover">Save</button>
+              <button className="press h-9 rounded-full bg-accent px-4 text-sm font-semibold text-white hover:bg-accent-hover">Save</button>
               <button
                 type="button"
                 onClick={deleteList}
-                className={`h-9 rounded-lg px-3 text-sm ${confirmDelete ? 'bg-red-600 font-medium text-white' : 'text-red-600 hover:bg-red-50 dark:hover:bg-red-950'}`}
+                className="press h-9 rounded-full px-4 text-sm text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950"
               >
-                {confirmDelete ? 'Tap again to delete' : 'Delete list'}
+                Delete list
               </button>
-              <button type="button" onClick={() => setEditing(false)} className="h-9 px-2 text-sm text-neutral-500">
+              <button type="button" onClick={() => setEditing(false)} className="press h-9 rounded-full px-3 text-sm text-neutral-500">
                 Cancel
               </button>
               {/* Tap a swatch to recolor the list right away. */}
@@ -198,7 +216,7 @@ export default function Home() {
                   >
                     <span
                       style={{ backgroundColor: c }}
-                      className={`size-7 rounded-full ${activeList.color === c ? 'ring-2 ring-neutral-800 ring-offset-2 ring-offset-white dark:ring-neutral-200 dark:ring-offset-neutral-950' : ''}`}
+                      className={`size-7 rounded-full ${activeList.color === c ? 'ring-2 ring-neutral-800 ring-offset-2 ring-offset-canvas dark:ring-neutral-200' : ''}`}
                     />
                   </button>
                 ))}
@@ -207,7 +225,7 @@ export default function Home() {
           )}
 
           {tasks && shown.length === 0 && (
-            <p className="py-12 text-center text-neutral-500">{activeList ? `Nothing in ${activeList.name}.` : 'All caught up.'}</p>
+            <p className="surface py-12 text-center text-neutral-500">{activeList ? `Nothing in ${activeList.name}.` : 'All caught up.'}</p>
           )}
 
           <div>
@@ -216,13 +234,13 @@ export default function Home() {
               if (!items.length) return null
               const overdue = group === 'Overdue'
               return (
-                <div key={group} className={`mt-6 first-of-type:mt-2 ${overdue ? '-mx-3 rounded-xl bg-red-50 px-3 py-2 dark:bg-red-950/40' : ''}`}>
-                  <h3 className={`text-sm font-medium ${overdue ? 'text-red-700 dark:text-red-300' : 'text-neutral-500'}`}>
+                <div key={group} className="mt-5 first-of-type:mt-3">
+                  <h3 className={`mb-1.5 px-1 text-sm font-semibold ${overdue ? 'text-red-600 dark:text-red-400' : 'text-neutral-500'}`}>
                     {group} <span className="font-normal opacity-70">{items.length}</span>
                   </h3>
-                  <ul>
+                  <ul className={`surface divide-y divide-separator overflow-hidden px-1 ${overdue ? 'ring-1 ring-red-500/30' : ''}`}>
                     {items.map((t) => (
-                      <TaskItem key={t.id} task={t} source={t.pages} onChange={replace} onDelete={drop} />
+                      <TaskItem key={t.id} task={t} source={t.pages} subtasks={subtasksOf(t.id)} onChange={replace} onDelete={drop} />
                     ))}
                   </ul>
                 </div>
@@ -235,7 +253,7 @@ export default function Home() {
         <section>
           <div className="mb-2 flex items-baseline justify-between">
             <h2 className={heading}>Recent Sessions</h2>
-            <Link to="/sessions" className="text-sm font-medium text-accent-text hover:underline">
+            <Link to="/sessions" className="text-sm font-semibold text-accent-text hover:underline">
               View all
             </Link>
           </div>
@@ -243,30 +261,30 @@ export default function Home() {
           {recent?.length === 0 && !creating && (
             <button
               onClick={() => setCreating(true)}
-              className="w-full rounded-xl border border-dashed border-neutral-300 p-8 text-center text-neutral-500 hover:border-accent hover:text-accent-text dark:border-neutral-700"
+              className="press surface w-full p-8 text-center font-medium text-accent-text"
             >
               Start your first session
             </button>
           )}
 
-          <ul className="flex flex-col gap-2">
+          <ul className="surface divide-y divide-separator overflow-hidden empty:hidden">
             {recent?.map((p) => {
               const count = openCount(p.id)
               return (
                 <li key={p.id}>
                   <Link
                     to={`/sessions/${p.id}`}
-                    className="block rounded-xl border border-neutral-200 p-4 transition-colors hover:border-accent/50 hover:bg-neutral-50 dark:border-neutral-800 dark:hover:bg-neutral-900"
+                    className="block px-4 py-3 transition-colors hover:bg-black/3 active:bg-black/6 dark:hover:bg-white/5 dark:active:bg-white/8"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <span className="font-medium">{p.title || 'Untitled'}</span>
                       {count > 0 && (
-                        <span className="shrink-0 rounded-full bg-accent/10 px-2 py-0.5 text-xs font-medium text-accent-text">
+                        <span className="shrink-0 rounded-full bg-accent/12 px-2.5 py-0.5 text-xs font-semibold text-accent-text">
                           {count} open
                         </span>
                       )}
                     </div>
-                    <div className="mt-1 text-sm text-neutral-500">
+                    <div className="mt-0.5 text-sm text-neutral-500">
                       {formatDate(p.date)} · {p.type}
                     </div>
                   </Link>
@@ -277,7 +295,7 @@ export default function Home() {
         </section>
       </div>
 
-      <button onClick={() => supabase.auth.signOut()} className="mt-12 h-11 text-sm text-neutral-500 md:hidden">
+      <button onClick={() => supabase.auth.signOut()} className="mt-12 h-11 px-1 text-sm font-medium text-accent-text md:hidden">
         Sign out
       </button>
     </div>

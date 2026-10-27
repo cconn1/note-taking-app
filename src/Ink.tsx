@@ -184,52 +184,56 @@ export default function Ink({ strokes, onChange }: { strokes: Stroke[]; onChange
   // Highlighter strokes sit under the pen.
   const ordered = [...strokes.filter((s) => s.tool === 'highlighter'), ...strokes.filter((s) => s.tool === 'pen')]
   const btn = (on: boolean) =>
-    `grid h-10 min-w-10 shrink-0 place-items-center rounded-lg px-2 text-sm font-medium ${on ? 'bg-accent text-white' : 'text-neutral-600 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-900'}`
+    `press grid h-10 min-w-10 shrink-0 place-items-center rounded-full px-3 text-sm font-semibold ${on ? 'bg-accent text-white shadow-sm' : 'text-neutral-700 hover:bg-black/5 dark:text-neutral-300 dark:hover:bg-white/8'}`
 
   return (
     <div>
       {/* Toolbar stays in view while you scroll the page. */}
-      <div className="sticky top-0 z-10 flex items-center gap-1 overflow-x-auto [scrollbar-width:none] border-b sm:flex-wrap sm:overflow-visible border-neutral-200 bg-white/95 py-1 backdrop-blur dark:border-neutral-800 dark:bg-neutral-950/95">
-        <button onClick={() => pickTool('pen')} className={btn(tool === 'pen')}>
-          Pen
-        </button>
-        <button onClick={() => pickTool('highlighter')} className={btn(tool === 'highlighter')}>
-          Highlight
-        </button>
-        <button onClick={() => pickTool('eraser')} className={btn(tool === 'eraser')}>
-          Erase
-        </button>
-        <span className="mx-1 h-6 w-px shrink-0 bg-neutral-200 dark:bg-neutral-800" />
-        {INK_COLORS.map((c) => (
-          <button
-            key={c}
-            onClick={() => {
-              setColor(c)
-              if (tool === 'eraser') setTool('pen')
-            }}
-            aria-label={`Color ${c}`}
-            aria-pressed={color === c}
-            className="grid size-10 shrink-0 place-items-center"
-          >
-            <span className={`size-6 rounded-full ${DOT[c]} ${color === c ? 'ring-2 ring-accent ring-offset-2 ring-offset-white dark:ring-offset-neutral-950' : ''}`} />
+      <div className="sticky top-2 z-10 m-2">
+        {/* Scroll edge: the drawing fades out as it slides under the toolbar instead of meeting a hard edge. */}
+        <div aria-hidden className="pointer-events-none absolute -inset-x-2 top-1/2 -z-10 h-[calc(50%+1rem)] bg-linear-to-b from-surface from-50% to-transparent" />
+        <div className="glass flex items-center gap-1 overflow-x-auto rounded-full p-1 [scrollbar-width:none] sm:flex-wrap sm:overflow-visible">
+          <button onClick={() => pickTool('pen')} className={btn(tool === 'pen')}>
+            Pen
           </button>
-        ))}
-        <span className="mx-1 h-6 w-px shrink-0 bg-neutral-200 dark:bg-neutral-800" />
-        {SIZES.pen.map((_, i) => (
-          <button key={i} onClick={() => setSizeIndex(i)} aria-label={`Width ${i + 1}`} aria-pressed={sizeIndex === i} className={btn(sizeIndex === i)}>
-            <span className="rounded-full bg-current" style={{ width: 4 + i * 4, height: 4 + i * 4 }} />
+          <button onClick={() => pickTool('highlighter')} className={btn(tool === 'highlighter')}>
+            Highlight
           </button>
-        ))}
-        <span className="mx-1 h-6 w-px shrink-0 bg-neutral-200 dark:bg-neutral-800" />
-        <button onClick={undo} disabled={!history.undo.length} aria-label="Undo" className={`${btn(false)} text-lg disabled:opacity-30`}>
-          ↶
-        </button>
-        <button onClick={redo} disabled={!history.redo.length} aria-label="Redo" className={`${btn(false)} text-lg disabled:opacity-30`}>
-          ↷
-        </button>
-        <button onClick={toggleFinger} aria-pressed={finger} className={`ml-auto shrink-0 ${btn(finger)}`} title="Draw with your finger (phones)">
-          Finger
-        </button>
+          <button onClick={() => pickTool('eraser')} className={btn(tool === 'eraser')}>
+            Erase
+          </button>
+          <span className="mx-1 h-6 w-px shrink-0 bg-separator" />
+          {INK_COLORS.map((c) => (
+            <button
+              key={c}
+              onClick={() => {
+                setColor(c)
+                if (tool === 'eraser') setTool('pen')
+              }}
+              aria-label={`Color ${c}`}
+              aria-pressed={color === c}
+              className="grid size-10 shrink-0 place-items-center"
+            >
+              <span className={`size-6 rounded-full ${DOT[c]} ${color === c ? 'ring-2 ring-accent ring-offset-2 ring-offset-surface' : ''}`} />
+            </button>
+          ))}
+          <span className="mx-1 h-6 w-px shrink-0 bg-separator" />
+          {SIZES.pen.map((_, i) => (
+            <button key={i} onClick={() => setSizeIndex(i)} aria-label={`Width ${i + 1}`} aria-pressed={sizeIndex === i} className={btn(sizeIndex === i)}>
+              <span className="rounded-full bg-current" style={{ width: 4 + i * 4, height: 4 + i * 4 }} />
+            </button>
+          ))}
+          <span className="mx-1 h-6 w-px shrink-0 bg-separator" />
+          <button onClick={undo} disabled={!history.undo.length} aria-label="Undo" className={`${btn(false)} text-lg disabled:opacity-30`}>
+            ↶
+          </button>
+          <button onClick={redo} disabled={!history.redo.length} aria-label="Redo" className={`${btn(false)} text-lg disabled:opacity-30`}>
+            ↷
+          </button>
+          <button onClick={toggleFinger} aria-pressed={finger} className={`ml-auto shrink-0 ${btn(finger)}`} title="Draw with your finger (phones)">
+            Finger
+          </button>
+        </div>
       </div>
 
       <svg
@@ -256,7 +260,7 @@ export default function Ink({ strokes, onChange }: { strokes: Stroke[]; onChange
         )}
       </svg>
 
-      <button onClick={() => setExtra((x) => x + 600)} className="mt-2 h-10 w-full rounded-lg text-sm text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-900">
+      <button onClick={() => setExtra((x) => x + 600)} className="h-11 w-full rounded-b-[1.25rem] text-sm font-medium text-accent-text hover:bg-black/3 dark:hover:bg-white/5">
         + Add space
       </button>
     </div>

@@ -7,19 +7,216 @@
   --color-accent-hover: #4a5029;
   --color-accent-text: #5b6236;
   --color-tan: #c9b78f;
+  /* Grouped-list surfaces (content layer, solid) */
+  --color-canvas: #f2f1ec;
+  --color-surface: #ffffff;
+  --color-separator: rgb(60 60 67 / 0.14);
 }
 
 /* Lighter green for text on dark backgrounds. */
 @media (prefers-color-scheme: dark) {
   :root {
     --color-accent-text: #b4bd86;
+    /* Olive-black, not pure black: the glass needs something to refract. */
+    --color-canvas: #0b0c08;
+    --color-surface: #1c1c1e;
+    --color-separator: rgb(84 84 88 / 0.5);
   }
 }
 
 :root {
   color-scheme: light dark;
+  /* Apple-style springs as curves: default is critically damped; "bounce" only after a flick. */
+  --ease-spring: cubic-bezier(0.32, 0.72, 0, 1);
+  --ease-bounce: cubic-bezier(0.34, 1.36, 0.64, 1);
 }
 
 body {
-  @apply bg-white text-neutral-900 antialiased dark:bg-neutral-950 dark:text-neutral-100;
+  @apply bg-canvas text-neutral-900 antialiased dark:text-neutral-100;
+  /* Glass needs something to refract: a faint olive/tan wash behind everything. */
+  background-image:
+    radial-gradient(60rem 40rem at 0% 0%, rgb(91 98 54 / 0.14), transparent 70%),
+    radial-gradient(50rem 40rem at 100% 100%, rgb(201 183 143 / 0.22), transparent 70%);
+  background-attachment: fixed;
+  @media (prefers-color-scheme: dark) {
+    background-image:
+      radial-gradient(60rem 40rem at 0% 0%, rgb(91 98 54 / 0.38), transparent 70%),
+      radial-gradient(50rem 40rem at 100% 100%, rgb(201 183 143 / 0.16), transparent 70%);
+  }
+}
+
+/* Floating functional layer: nav, toolbars, sheets, toasts. Never put glass on glass. */
+@utility glass {
+  background: rgb(255 255 255 / 0.62);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid rgb(255 255 255 / 0.55);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.7),
+    0 8px 32px rgb(0 0 0 / 0.1),
+    0 1px 3px rgb(0 0 0 / 0.06);
+  @media (prefers-color-scheme: dark) {
+    background: rgb(36 36 38 / 0.6);
+    border-color: rgb(255 255 255 / 0.1);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.08),
+      0 8px 32px rgb(0 0 0 / 0.5);
+  }
+  @media (prefers-reduced-transparency: reduce) {
+    background: var(--color-surface);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+  @media (prefers-contrast: more) {
+    background: var(--color-surface);
+    border-color: currentColor;
+  }
+}
+
+/* Content layer: solid rounded card, like an iOS inset grouped list. */
+@utility surface {
+  background: var(--color-surface);
+  border-radius: 1.25rem;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.04);
+  @media (prefers-contrast: more) {
+    outline: 1px solid currentColor;
+  }
+}
+
+/* Instant press feedback (on pointer-down, not release). */
+@utility press {
+  transition: transform 160ms var(--ease-spring), background-color 160ms, opacity 160ms;
+  &:active:not(:disabled) {
+    transform: scale(0.96);
+  }
+}
+
+/* Large title: tight leading, negative tracking as it grows. */
+@utility large-title {
+  font-size: clamp(1.875rem, 4vw, 2.5rem);
+  line-height: 1.08;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+}
+
+/* iOS 26 section headers: bold, sentence case, a step above body. */
+@utility section-label {
+  font-size: 1.25rem;
+  line-height: 1.2;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+/* Sheets materialize: blur + scale together, not a plain fade. */
+dialog[open] {
+  animation: materialize 380ms var(--ease-spring);
+}
+dialog[open]::backdrop {
+  animation: dim 300ms ease-out;
+}
+@keyframes materialize {
+  from {
+    opacity: 0;
+    transform: scale(0.94) translateY(12px);
+    filter: blur(8px);
+  }
+}
+@keyframes dim {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes fade-out {
+  to {
+    opacity: 0;
+  }
+}
+
+/* Quick Add drives its own motion from JS (springs, drag to dismiss); the backdrop follows --sheet-p. */
+dialog.sheet[open],
+dialog.sheet[open]::backdrop {
+  animation: none;
+}
+dialog.sheet::backdrop {
+  opacity: var(--sheet-p, 1);
+}
+
+/* Exits replay the entrance in reverse (curve mirrored too). Toasts rise from below and sink back; the error banner drops from the top and goes back up. */
+.toast-in {
+  animation: toast-in 420ms var(--ease-spring);
+}
+.toast-out {
+  animation: toast-in 280ms var(--ease-spring) reverse forwards;
+}
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.96);
+  }
+}
+.banner-in {
+  animation: banner-in 420ms var(--ease-spring);
+}
+.banner-out {
+  animation: banner-in 280ms var(--ease-spring) reverse forwards;
+}
+@keyframes banner-in {
+  from {
+    opacity: 0;
+    transform: translateY(-16px) scale(0.96);
+  }
+}
+
+/* Scroll edge effect: content blurs and fades where it slides under floating chrome, no hard cut. */
+.scroll-edge {
+  position: fixed;
+  inset-inline: 0;
+  z-index: 20;
+  pointer-events: none;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  background: linear-gradient(var(--edge-dir), color-mix(in srgb, var(--color-canvas) 75%, transparent), transparent);
+  mask-image: linear-gradient(var(--edge-dir), black var(--edge-solid), transparent);
+  -webkit-mask-image: linear-gradient(var(--edge-dir), black var(--edge-solid), transparent);
+}
+.scroll-edge-top {
+  --edge-dir: to bottom;
+  --edge-solid: max(0.75rem, env(safe-area-inset-top));
+  top: 0;
+  height: calc(max(0.75rem, env(safe-area-inset-top)) + 1rem);
+}
+.scroll-edge-bottom {
+  --edge-dir: to top;
+  --edge-solid: calc(env(safe-area-inset-bottom) + 2rem);
+  bottom: 0;
+  height: calc(env(safe-area-inset-bottom) + 6.5rem);
+}
+@media (prefers-reduced-transparency: reduce) {
+  .scroll-edge {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    background: linear-gradient(var(--edge-dir), var(--color-canvas) var(--edge-solid), transparent);
+    mask-image: none;
+    -webkit-mask-image: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  dialog[open],
+  dialog.sheet[open],
+  dialog.sheet[open]::backdrop,
+  .toast-in,
+  .banner-in {
+    animation: dim 200ms ease;
+  }
+  .toast-out,
+  .banner-out {
+    animation: fade-out 200ms ease forwards;
+  }
+  dialog.sheet::backdrop {
+    transition: opacity 200ms ease;
+  }
+  .press:active {
+    transform: none;
+  }
 }
