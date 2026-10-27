@@ -243,9 +243,9 @@ export default function TaskItem({
   }
 
   const overdue = !checked && task.due_date && task.due_date < today()
-  const chip = 'flex h-7 items-center rounded-full px-2.5 sm:h-8'
+  const chip = 'flex h-7 items-center rounded-full px-2.5 @xl:h-8'
   // The chips stay 28px pills but their labels reach 44px tall; negative margins keep the layout.
-  const hit = 'relative -my-2 flex shrink-0 cursor-pointer items-center py-2 text-xs font-medium sm:my-0 sm:py-0'
+  const hit = 'relative -my-2 flex shrink-0 cursor-pointer items-center py-2 text-xs font-medium @xl:my-0 @xl:py-0'
 
   return (
     <li
@@ -254,7 +254,7 @@ export default function TaskItem({
       onPointerMove={onPointerMove}
       onPointerUp={onPointerEnd}
       onPointerCancel={onPointerEnd}
-      className="relative touch-pan-y overflow-hidden"
+      className="@container relative touch-pan-y overflow-hidden"
     >
       {dx > 0 && (
         // Touch-only shortcut for the checkbox, so hidden from assistive tech.
@@ -289,7 +289,7 @@ export default function TaskItem({
           settle(0)
         }}
         style={{ transform: dx ? `translateX(${dx}px)` : undefined }}
-        className={`group flex items-start gap-1 sm:items-center bg-surface transition-opacity duration-300 ${checked !== !!task.completed_at ? 'opacity-40' : ''}`}
+        className={`group flex items-start gap-1 @xl:items-center bg-surface transition-opacity duration-300 ${checked !== !!task.completed_at ? 'opacity-40' : ''}`}
       >
         <button
           role="checkbox"
@@ -309,7 +309,7 @@ export default function TaskItem({
         </button>
 
         {/* Phones: text on its own line, chips underneath. Wider screens: all on one line. */}
-        <div className="flex min-w-0 flex-1 flex-col sm:flex-row sm:items-center sm:gap-1">
+        <div className="flex min-w-0 flex-1 flex-col @xl:flex-row @xl:items-center @xl:gap-1">
           <textarea
             key={task.text}
             defaultValue={task.text}
@@ -329,7 +329,7 @@ export default function TaskItem({
             className={`min-h-11 min-w-0 flex-1 resize-none bg-transparent py-2.5 text-base leading-6 outline-none field-sizing-content transition-colors duration-300 ${checked ? 'text-neutral-400 line-through' : ''}`}
           />
 
-          <div className="-mt-1.5 flex flex-wrap items-center gap-1 pb-1.5 empty:hidden sm:mt-0 sm:flex-nowrap sm:pb-0">
+          <div className="-mt-1.5 flex flex-wrap items-center gap-1 pb-1.5 empty:hidden @xl:mt-0 @xl:flex-nowrap @xl:pb-0">
 
             {subtasks && subtasks.length > 0 && (
               <button
